@@ -51,6 +51,9 @@ The simplest route is [Render](https://render.com): push this repo to GitHub, th
 
 Any host that runs Docker works the same way: build `app/Dockerfile` and give it a `DATABASE_URL`.
 
+### Password reset
+"Forgot your password?" on the login page emails a one-time link that expires after an hour. It needs email turned on (below). Using the link logs the person out everywhere else. The reply never reveals whether an account exists, and each account gets at most 3 reset emails an hour.
+
 ### Turn on email (Resend, free up to about 3,000/month)
 1. Create a Resend account and verify a sending domain, such as `mail.yourdomain.com`.
 2. Set `RESEND_API_KEY` and `EMAIL_FROM` (for example `hello@mail.yourdomain.com`).
@@ -93,6 +96,7 @@ All `/api` routes need the session cookie from `/api/auth/login` or `/api/auth/s
 | Method | Path | |
 | --- | --- | --- |
 | POST | `/api/auth/signup`, `/login`, `/logout` | Accounts |
+| POST | `/api/auth/forgot`, `/api/auth/reset` | Password reset by email (`{ email }`, then `{ token, password }`) |
 | GET | `/api/me` | User, business, plan, capabilities |
 | PATCH | `/api/business` | Settings |
 | GET | `/api/dashboard` | Tiles: overdue, revenue slipping, recovered |
@@ -113,7 +117,6 @@ All `/api` routes need the session cookie from `/api/auth/login` or `/api/auth/s
 ## Next features worth building
 
 1. Square webhooks (`payment.updated`) for real-time sync instead of hourly, and applying the Square sync to multiple locations separately.
-2. Password reset by email. Not built yet. For now, reset a password by hand in the database.
-3. "First visit to second visit" sequence for brand-new customers.
-4. Two-way texting: forward customer replies to the owner's phone.
-5. Discount code redemption entry at checkout (today a return visit counts as the win).
+2. "First visit to second visit" sequence for brand-new customers.
+3. Two-way texting: forward customer replies to the owner's phone.
+4. Discount code redemption entry at checkout (today a return visit counts as the win).

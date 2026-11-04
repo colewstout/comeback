@@ -352,3 +352,82 @@ describe('scheduler', () => {
     expect(reports[0]!.subject).toMatch(/Your Comeback week/);
   });
 });
+
+describe('password reset', () => {
+  const resetLink = () => {
+    const mail = sent.filter((m) => m.subject === 'Reset your Comeback password').at(-1);
+    return mail ? /https:\/\/app\.test\/app#reset=([A-Za-z0-9_-]+)/.exec(mail.body)?.[1] : undefined;
+  };
+  const forgot = (email: string) => app.inject({ method: 'POST', url: '/api/auth/forgot', payload: { email } });
+  const reset = (token: string, password: string) => app.inject({ method: 'POST', url: '/api/auth/reset', payload: { token, password } });
+  const login = (password: string) => app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'owner@maple.test', password } });
+  const flush = () => new Promise((r) => setTimeout(r, 20)); // the email is sent without blocking the reply
+
+  it('gives the same answer for unknown emails and sends nothing', async () => {
+    await signup();
+    const unknown = await forgot('nobody@x.test');
+    const known = await forgot('OWNER@maple.test');
+    expect(unknown.statusCode).toBe(200);
+    expect(unknown.json()).toEqual(known.json());
+    await flush();
+    expect(sent.filter((m) => m.subject === 'Reset your Comeback password').map((m) => m.to)).toEqual(['owner@maple.test']);
+  });
+
+  it('resets the password once, logs out other sessions, and logs you in', async () => {
+    const oldSession = await signup();
+    await forgot('owner@maple.test');
+    await flush();
+    const token = resetLink()!;
+    expect(token).toBeTruthy();
+    // Only a hash is stored.
+    const { rows } = await db.query('SELECT token_hash FROM password_resets');
+    expect(rows[0].token_hash).not.toBe(token);
+
+    expect((await reset(token, 'short')).statusCode).toBe(400);
+    const ok = await reset(token, 'a-brand-new-password');
+    expect(ok.statusCode).toBe(200);
+    const newSession = cookieFrom(ok);
+    expect((await api(newSession).get('/api/me')).statusCode).toBe(200);
+    expect((await api(oldSession).get('/api/me')).statusCode).toBe(401);
+
+    expect((await login('a-long-password')).statusCode).toBe(401);
+    expect((await login('a-brand-new-password')).statusCode).toBe(200);
+
+    const again = await reset(token, 'another-new-password');
+    expect(again.statusCode).toBe(400);
+    expect(again.json().error).toMatch(/expired or was already used/);
+  });
+
+  it('rejects expired links and replaces older links with the newest', async () => {
+    await signup();
+    await forgot('owner@maple.test');
+    await flush();
+    const first = resetLink()!;
+    await forgot('owner@maple.test');
+    await flush();
+    const second = resetLink()!;
+    expect(second).not.toBe(first);
+    expect((await reset(first, 'a-brand-new-password')).statusCode).toBe(400);
+
+    await db.query(`UPDATE password_resets SET expires_at = now() - interval '1 minute'`);
+    expect((await reset(second, 'a-brand-new-password')).statusCode).toBe(400);
+    expect((await reset('x'.repeat(43), 'a-brand-new-password')).statusCode).toBe(400);
+  });
+
+  it('sends at most 3 reset emails an hour per account', async () => {
+    await signup();
+    for (let i = 0; i < 5; i++) expect((await forgot('owner@maple.test')).statusCode).toBe(200);
+    await flush();
+    expect(sent.filter((m) => m.subject === 'Reset your Comeback password')).toHaveLength(3);
+  });
+
+  it('unlocks an account that was locked by failed logins', async () => {
+    await signup();
+    for (let i = 0; i < 5; i++) await login('wrong-password');
+    expect((await login('a-long-password')).statusCode).toBe(429);
+    await forgot('owner@maple.test');
+    await flush();
+    expect((await reset(resetLink()!, 'a-brand-new-password')).statusCode).toBe(200);
+    expect((await login('a-brand-new-password')).statusCode).toBe(200);
+  });
+});
