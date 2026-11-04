@@ -2,8 +2,9 @@ import type { Db } from '../db/pool.js';
 import type { Providers } from '../providers/index.js';
 import { runTick } from '../services/sequences.js';
 import { sendWeeklyReports } from '../services/reports.js';
+import { syncAllSquare, type SquareDeps } from '../services/squareSync.js';
 
-interface Opts { db: Db; providers: Providers; appUrl: string; secret: string; log: (msg: string, extra?: unknown) => void }
+interface Opts { db: Db; providers: Providers; appUrl: string; secret: string; square?: SquareDeps | null; log: (msg: string, extra?: unknown) => void }
 
 /** Claim a job for one period. Returns false if another run already claimed it. */
 export async function claimRun(db: Db, id: string): Promise<boolean> {
@@ -27,6 +28,8 @@ export function startScheduler(o: Opts, everyMs = 15 * 60_000) {
     running = true;
     try {
       const now = new Date();
+      // Pull new sales first so wins are counted before the next messages go out.
+      if (o.square) o.log('square sync', await syncAllSquare({ ...o.square, log: o.log }, now));
       o.log('tick', await runTick({ db: o.db, providers: o.providers, appUrl: o.appUrl, secret: o.secret, log: o.log }, now));
       await maybeSendWeeklyReport(o, now);
     } catch (err) {

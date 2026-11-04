@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, keylen: number) => Promise<Buffer>;
@@ -55,4 +55,24 @@ export function verifyStripeSignature(payload: string, header: string, secret: s
   const expected = createHmac('sha256', secret).update(`${t}.${payload}`).digest('hex');
   const signatures = header.split(',').filter((kv) => kv.startsWith('v1=')).map((kv) => kv.slice(3));
   return signatures.some((sig) => safeEqual(sig, expected));
+}
+
+/** AES-256-GCM for secrets stored in the database. Output: iv.tag.ciphertext (base64url). */
+export function encryptionKey(secret: string): Buffer {
+  return createHash('sha256').update(`comeback-token-key:${secret}`).digest();
+}
+
+export function encrypt(plain: string, key: Buffer): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const data = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+  return [iv, cipher.getAuthTag(), data].map((b) => b.toString('base64url')).join('.');
+}
+
+export function decrypt(boxed: string, key: Buffer): string {
+  const [iv, tag, data] = boxed.split('.').map((s) => Buffer.from(s, 'base64url'));
+  if (!iv || !tag || !data) throw new Error('Malformed encrypted value');
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
 }

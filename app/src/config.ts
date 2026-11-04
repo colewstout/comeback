@@ -22,6 +22,14 @@ const schema = z.object({
   STRIPE_PRICE_STARTER: optional,
   STRIPE_PRICE_GROWTH: optional,
   STRIPE_PRICE_MULTI: optional,
+
+  // Square: create an app at https://developer.squareup.com/apps and set its OAuth
+  // redirect URL to $APP_URL/integrations/square/callback.
+  SQUARE_APP_ID: optional,
+  SQUARE_APP_SECRET: optional,
+  SQUARE_ENVIRONMENT: z.enum(['production', 'sandbox']).default('production'),
+  // Encrypts stored Square tokens. Falls back to a key derived from SESSION_SECRET.
+  TOKEN_ENCRYPTION_KEY: optional,
 });
 
 export type Config = z.infer<typeof schema>;

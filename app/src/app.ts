@@ -17,18 +17,24 @@ import { jobRoutes } from './routes/jobs.js';
 import { ImportError } from './services/imports.js';
 import { CsvError } from './lib/csv.js';
 import { BillingError } from './services/billing.js';
+import { SyncError, type SquareDeps } from './services/squareSync.js';
+import { squareDepsFromConfig } from './integrations/deps.js';
+import { integrationRoutes } from './routes/integrations.js';
 
 export interface AppDeps {
   config: Config;
   db: Db;
   providers: Providers;
   now?: () => Date; // overridable in tests
+  fetch?: typeof fetch; // overridable in tests (Square API)
 }
 
 declare module 'fastify' {
   interface FastifyInstance {
     deps: Required<AppDeps>;
     requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    loadSession: (req: FastifyRequest) => Promise<'none' | 'expired' | 'no_business' | 'ok'>;
+    square: SquareDeps | null; // null when SQUARE_APP_ID / SQUARE_APP_SECRET aren't set
   }
   interface FastifyRequest {
     user?: { id: string; email: string; name: string };
@@ -42,23 +48,33 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     bodyLimit: 15 * 1024 * 1024, // CSV uploads
     trustProxy: true,
   });
-  app.decorate('deps', { now: () => new Date(), ...deps });
+  app.decorate('deps', { now: () => new Date(), fetch: globalThis.fetch, ...deps });
+  app.decorate('square', squareDepsFromConfig(deps.config, deps.db, deps.fetch ?? globalThis.fetch));
 
   await app.register(cookie, { secret: deps.config.SESSION_SECRET });
   await app.register(formbody);
 
-  app.decorate('requireAuth', async (req: FastifyRequest, reply: FastifyReply) => {
+  /** Look up the logged-in user and their business from the session cookie. */
+  async function loadSession(req: FastifyRequest): Promise<'none' | 'expired' | 'no_business' | 'ok'> {
     const token = req.cookies[SESSION_COOKIE];
-    if (!token) return reply.code(401).send({ error: 'Please log in.' });
+    if (!token) return 'none';
     const { rows } = await deps.db.query<{ id: string; email: string; name: string }>(
       `SELECT u.id, u.email, u.name FROM sessions s JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [sha256(token)],
     );
-    if (!rows[0]) return reply.code(401).send({ error: 'Your session has expired. Please log in again.' });
+    if (!rows[0]) return 'expired';
     req.user = rows[0];
     req.business = (await getBusinessForOwner(deps.db, rows[0].id)) ?? undefined;
-    if (!req.business) return reply.code(403).send({ error: 'No business on this account.' });
+    return req.business ? 'ok' : 'no_business';
+  }
+  app.decorate('loadSession', loadSession);
+
+  app.decorate('requireAuth', async (req: FastifyRequest, reply: FastifyReply) => {
+    const s = await loadSession(req);
+    if (s === 'none') return reply.code(401).send({ error: 'Please log in.' });
+    if (s === 'expired') return reply.code(401).send({ error: 'Your session has expired. Please log in again.' });
+    if (s === 'no_business') return reply.code(403).send({ error: 'No business on this account.' });
   });
 
   app.setErrorHandler((err, req, reply) => {
@@ -66,7 +82,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       const first = err.issues[0];
       return reply.code(400).send({ error: `${first?.path.join('.') || 'input'}: ${first?.message}` });
     }
-    if (err instanceof ImportError || err instanceof CsvError || err instanceof BillingError) {
+    if (err instanceof ImportError || err instanceof CsvError || err instanceof BillingError || err instanceof SyncError) {
       return reply.code(400).send({ error: err.message });
     }
     const e = err as { statusCode?: number; message: string };
@@ -84,6 +100,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(apiRoutes, { prefix: '/api' });
   await app.register(webhookRoutes);
   await app.register(jobRoutes, { prefix: '/jobs' });
+  await app.register(integrationRoutes);
 
   const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
   await app.register(fastifyStatic, { root: publicDir, index: ['index.html'] });

@@ -44,3 +44,11 @@ services:
         sync: false
       - key: STRIPE_PRICE_MULTI
         sync: false
+      - key: SQUARE_APP_ID
+        sync: false
+      - key: SQUARE_APP_SECRET
+        sync: false
+      - key: SQUARE_ENVIRONMENT
+        value: production
+      - key: TOKEN_ENCRYPTION_KEY
+        generateValue: true

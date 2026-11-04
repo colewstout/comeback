@@ -79,6 +79,7 @@
     <!-- Import -->
     <section id="tab-import" class="tab" hidden>
       <div class="head"><div><h1>Upload sales</h1><p class="muted">Re-upload whenever you like. We only add purchases we haven't seen before, and new visits from customers in a win-back count as recovered revenue.</p></div></div>
+      <div class="card sq-hint" id="squareHint" hidden></div>
       <div class="card stack">
         <div class="drop" id="drop">
           <p><b>Drop a CSV file here</b> or</p>
@@ -103,6 +104,7 @@
     <!-- Settings -->
     <section id="tab-settings" class="tab" hidden>
       <div class="head"><div><h1>Settings</h1></div></div>
+      <div class="card stack" id="squareCard"></div>
       <form class="card stack" id="settingsForm">
         <h2>Win-back</h2>
         <label class="check big"><input type="checkbox" id="s-autopilot"> <span><b>Autopilot</b><br><span class="muted">Start win-backs automatically for overdue customers. When this is off, you start each one yourself.</span></span></label>

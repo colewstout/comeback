@@ -59,6 +59,13 @@
     const h = location.hash.slice(1);
     if (!S.me) return showAuth(h === 'signup' ? 'signup' : 'login');
     if (h === 'billing-success') { toast('Thanks! Your subscription is active.'); location.hash = '#settings'; return; }
+    const SQ_MSG = {
+      'square-connected': 'Square is connected. Importing your last year of sales now; this can take a minute.',
+      'square-cancelled': 'Square wasn’t connected because access wasn’t approved.',
+      'square-error': 'Connecting Square didn’t work. Please try again.',
+      'square-unavailable': 'Square isn’t set up on this server yet.',
+    };
+    if (SQ_MSG[h]) { toast(SQ_MSG[h]); location.hash = '#settings'; if (h === 'square-connected') pollSquare(); return; }
     const tab = TABS.includes(h) ? h : 'overview';
     $('authView').hidden = true; $('appView').hidden = false;
     TABS.forEach((t) => ($(`tab-${t}`).hidden = t !== tab));
@@ -256,7 +263,12 @@
   drop.addEventListener('drop', (e) => uploadFile(e.dataTransfer.files[0]));
 
   async function renderImports() {
-    const { imports } = await api('GET', '/api/imports');
+    const [{ imports }, { square }] = await Promise.all([api('GET', '/api/imports'), api('GET', '/api/integrations')]);
+    const hint = $('squareHint');
+    hint.hidden = !square.available;
+    hint.innerHTML = square.connected
+      ? `<span>Square is connected${square.lastSyncedAt ? `, last synced ${when(square.lastSyncedAt)}` : ''}. New sales come in every hour, so you don't need to upload.</span><a class="btn btn-ghost btn-sm" href="#settings">Square settings</a>`
+      : `<span><b>Use Square?</b> Connect it once and your sales come in automatically every hour.</span><a class="btn btn-primary btn-sm" href="/integrations/square/connect">Connect Square</a>`;
     $('imports').innerHTML = imports.length
       ? `<div class="tbl"><table><thead><tr><th>File</th><th>Uploaded</th><th class="n">New purchases</th><th class="n">New customers</th><th class="n">Unreadable rows</th></tr></thead><tbody>${imports.map((i) => `<tr><td>${esc(i.filename)}</td><td>${when(i.created_at)}</td><td class="n">${i.visits_added}</td><td class="n">${i.customers_created}</td><td class="n">${i.rows_skipped}</td></tr>`).join('')}</tbody></table></div>`
       : `<p class="muted">No uploads yet.</p>`;
@@ -292,6 +304,66 @@
     $('s-start').innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === b.send_window_start ? 'selected' : ''}>${hourLabel(h)}</option>`).join('');
     $('s-end').innerHTML = Array.from({ length: 24 }, (_, i) => i + 1).map((h) => `<option value="${h}" ${h === b.send_window_end ? 'selected' : ''}>${hourLabel(h)}</option>`).join('');
     renderBilling();
+    renderSquare().catch((e) => toast(e.message));
+  }
+
+  async function renderSquare(data) {
+    const { square: q } = data || (await api('GET', '/api/integrations'));
+    const card = $('squareCard');
+    if (!q.available) { card.hidden = true; return; }
+    card.hidden = false;
+    const head = `<div class="sq-row"><div class="row-gap"><span class="sq-logo" aria-hidden="true"><i></i></span><div><h2>Square</h2><p class="muted small">Brings in sales from your Square account every hour. Read-only: we never change anything in Square.</p></div></div>`;
+    if (!q.connected) {
+      card.innerHTML = `${head}<a class="btn btn-primary" href="/integrations/square/connect">Connect Square</a></div>
+        <p class="muted small">You'll sign in to Square and approve access to your customers and payments. We import the last 12 months of sales. Only payments with a customer attached at checkout can be matched to a person.</p>`;
+      return;
+    }
+    const problem = q.status === 'needs_reauth' || q.status === 'error';
+    card.innerHTML = `${head}<span class="pill ${problem ? 'p-overdue' : 'p-won'}">${q.status === 'needs_reauth' ? 'Needs reconnecting' : q.status === 'error' ? 'Sync problem' : 'Connected'}</span></div>
+      ${q.lastError ? `<p class="error small">${esc(q.lastError)}</p>` : ''}
+      <dl class="dl">
+        ${q.accountName ? `<dt>Account</dt><dd>${esc(q.accountName)}</dd>` : ''}
+        <dt>Last synced</dt><dd>${q.lastSyncedAt ? when(q.lastSyncedAt) : 'In progress…'}</dd>
+        ${q.syncedThrough ? `<dt>Sales through</dt><dd>${when(q.syncedThrough)}</dd>` : ''}
+      </dl>
+      <div class="row-gap">
+        ${q.status === 'needs_reauth' ? `<a class="btn btn-primary btn-sm" href="/integrations/square/connect">Reconnect Square</a>` : `<button class="btn btn-ghost btn-sm" type="button" data-sq="sync">Sync now</button>`}
+        <button class="btn btn-ghost btn-sm" type="button" data-sq="disconnect">Disconnect</button>
+        <span class="muted small" id="sqMsg" aria-live="polite"></span>
+      </div>`;
+  }
+
+  let sqConfirm = false;
+  $('squareCard').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-sq]'); if (!b) return;
+    const msg = $('sqMsg');
+    try {
+      if (b.dataset.sq === 'sync') {
+        b.disabled = true; msg.textContent = 'Syncing…';
+        const r = await api('POST', '/api/integrations/square/sync');
+        const x = r.result;
+        toast(`Square synced: ${x.visitsAdded} new sale${x.visitsAdded === 1 ? '' : 's'}${x.customersCreated ? `, ${x.customersCreated} new customers` : ''}${x.wins ? `, ${x.wins} came back` : ''}.`);
+        await renderSquare({ square: { available: true, ...r.square } });
+      } else if (b.dataset.sq === 'disconnect') {
+        if (!sqConfirm) { sqConfirm = true; b.textContent = 'Click again to disconnect'; setTimeout(() => { sqConfirm = false; if (b.isConnected) b.textContent = 'Disconnect'; }, 4000); return; }
+        sqConfirm = false;
+        await api('POST', '/api/integrations/square/disconnect');
+        toast('Square disconnected. Your customers and sales history stay here.');
+        await renderSquare();
+      }
+    } catch (err) { msg.textContent = err.message; b.disabled = false; await renderSquare().catch(() => {}); }
+  });
+
+  // After connecting, refresh the card until the first import finishes.
+  function pollSquare(tries = 0) {
+    setTimeout(async () => {
+      try {
+        const data = await api('GET', '/api/integrations');
+        if (!$('tab-settings').hidden) await renderSquare(data);
+        if (!data.square.lastSyncedAt && tries < 40) pollSquare(tries + 1);
+        else if (data.square.lastSyncedAt) toast('Your Square sales are in. Check the Customers tab.');
+      } catch { /* ignore */ }
+    }, 3000);
   }
   $('settingsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
