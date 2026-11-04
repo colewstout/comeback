@@ -349,13 +349,13 @@ describe('scheduler', () => {
     expect(await maybeSendWeeklyReport(o, new Date('2026-11-09T12:30:00Z'))).toBe(false); // already sent
     const reports = sent.filter((m) => m.to === 'owner@maple.test');
     expect(reports).toHaveLength(1);
-    expect(reports[0]!.subject).toMatch(/Your Comeback week/);
+    expect(reports[0]!.subject).toMatch(/Your week with One More Time/);
   });
 });
 
 describe('password reset', () => {
   const resetLink = () => {
-    const mail = sent.filter((m) => m.subject === 'Reset your Comeback password').at(-1);
+    const mail = sent.filter((m) => m.subject === 'Reset your One More Time password').at(-1);
     return mail ? /https:\/\/app\.test\/app#reset=([A-Za-z0-9_-]+)/.exec(mail.body)?.[1] : undefined;
   };
   const forgot = (email: string) => app.inject({ method: 'POST', url: '/api/auth/forgot', payload: { email } });
@@ -370,7 +370,7 @@ describe('password reset', () => {
     expect(unknown.statusCode).toBe(200);
     expect(unknown.json()).toEqual(known.json());
     await flush();
-    expect(sent.filter((m) => m.subject === 'Reset your Comeback password').map((m) => m.to)).toEqual(['owner@maple.test']);
+    expect(sent.filter((m) => m.subject === 'Reset your One More Time password').map((m) => m.to)).toEqual(['owner@maple.test']);
   });
 
   it('resets the password once, logs out other sessions, and logs you in', async () => {
@@ -418,7 +418,7 @@ describe('password reset', () => {
     await signup();
     for (let i = 0; i < 5; i++) expect((await forgot('owner@maple.test')).statusCode).toBe(200);
     await flush();
-    expect(sent.filter((m) => m.subject === 'Reset your Comeback password')).toHaveLength(3);
+    expect(sent.filter((m) => m.subject === 'Reset your One More Time password')).toHaveLength(3);
   });
 
   it('unlocks an account that was locked by failed logins', async () => {

@@ -1,6 +1,6 @@
-# Comeback app
+# One More Time app
 
-The backend and owner dashboard for Comeback: it tracks how often each customer buys, flags the ones who are overdue, and runs a three-message win-back (check-in, discount, last call) by text or email. Then it counts who came back and how much they spent.
+The backend and owner dashboard for One More Time: it tracks how often each customer buys, flags the ones who are overdue, and runs a three-message win-back (check-in, discount, last call) by text or email. Then it counts who came back and how much they spent.
 
 ## What's in here
 
@@ -37,7 +37,7 @@ npm run seed
 npm run dev
 ```
 
-Open http://localhost:3000/app and log in as `demo@comeback.test` / `demo-password-123`. Without Twilio or Resend keys, messages print in the terminal instead of being sent.
+Open http://localhost:3000/app and log in as `demo@onemoretime.test` / `demo-password-123`. Without Twilio or Resend keys, messages print in the terminal instead of being sent.
 
 ```bash
 npm test
