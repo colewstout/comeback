@@ -153,3 +153,13 @@ tr:last-child td{border-bottom:0}
 .contact{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:480px){.contact{grid-template-columns:1fr}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;max-width:calc(100% - 32px)}
+
+/* square */
+.sq-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.sq-logo{width:40px;height:40px;border-radius:10px;background:var(--ink);display:grid;place-items:center;flex:none}
+.sq-logo i{width:18px;height:18px;border:3px solid var(--paper);border-radius:4px;display:block}
+.sq-hint{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between;margin-bottom:16px}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:14px;margin:0}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0}
+.tab > .card + .card, .tab > .card + form.card, .tab > form.card + .card { margin-top: 16px; }

@@ -47,7 +47,7 @@ export async function apiRoutes(app: FastifyInstance) {
     plan: planLimits(req.business!.plan),
     plans: PLANS,
     industries: Object.fromEntries(Object.entries(INDUSTRIES).map(([k, v]) => [k, v.label])),
-    capabilities: { sms: smsAllowedFor(req.business!, providers), email: providers.email !== null, billing: Boolean(config.STRIPE_SECRET_KEY) },
+    capabilities: { sms: smsAllowedFor(req.business!, providers), email: providers.email !== null, billing: Boolean(config.STRIPE_SECRET_KEY), square: app.square !== null },
   }));
 
   app.patch('/business', async (req) => {

@@ -11,7 +11,8 @@ The backend and owner dashboard for Comeback: it tracks how often each customer 
 | API server | `src/app.ts`, `src/routes/` | Fastify + Postgres. Accounts, imports, customers, win-backs, messages, billing, webhooks. |
 | Rhythm engine | `src/lib/rhythm.ts` | Each customer's usual gap is the median time between visits. Due at 1×, overdue at 1.5× (adjustable), lapsed at 3×. |
 | Win-back engine | `src/services/sequences.ts` | Starts sequences, sends steps on day 0, 7 and 21 inside sending hours, retries failures, records wins. |
-| Scheduler | `src/jobs/scheduler.ts` | Runs inside the server every 15 minutes, plus the Monday report email. |
+| Square sync | `src/integrations/square.ts`, `src/services/squareSync.ts` | Connects a Square account (read-only), imports a year of payments, then syncs hourly. |
+| Scheduler | `src/jobs/scheduler.ts` | Runs inside the server every 15 minutes: Square sync, then due messages, plus the Monday report email. |
 | Database | `src/db/migrations/` | Plain SQL, applied automatically at startup. |
 
 ### How a win-back works
@@ -59,6 +60,19 @@ Any host that runs Docker works the same way: build `app/Dockerfile` and give it
 2. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM_NUMBER`.
 3. In the number's settings, set **A message comes in** to `https://YOUR_APP_URL/webhooks/twilio/sms` (HTTP POST). This handles STOP and START and saves replies.
 
+### Turn on Square sync
+1. Create an application at https://developer.squareup.com/apps. In **OAuth**, set the Redirect URL to `https://YOUR_APP_URL/integrations/square/callback`.
+2. Set `SQUARE_APP_ID` and `SQUARE_APP_SECRET` (the OAuth "Application secret"). For testing, use the **sandbox** credentials and `SQUARE_ENVIRONMENT=sandbox`, and sign in with a sandbox test account.
+3. Owners then click **Connect Square** in Settings or on the Upload page.
+
+How it works:
+- Read-only permissions: `CUSTOMERS_READ`, `PAYMENTS_READ`, `MERCHANT_PROFILE_READ`.
+- The first sync imports the last 12 months of completed payments. After that, each hourly sync re-reads the last 3 days and checks the Refunds API, so refunds are applied (a fully refunded payment stops counting as a visit).
+- Only payments with a customer attached at checkout can be matched to a person. Walk-in payments are counted and shown as skipped.
+- Square customers are matched to existing customers by phone, then email, then name, so a business that uploaded a CSV first doesn't get duplicates.
+- Square doesn't share texting permission, so Square customers start as email-only until the owner marks text permission. Customers who unsubscribed from Square emails are imported as unsubscribed.
+- Tokens are encrypted in the database (AES-256-GCM) and refreshed before they expire. If an owner removes access in Square, the card shows **Reconnect Square**. Disconnecting revokes the token but keeps the imported history.
+
 ### Turn on billing (Stripe)
 1. Create three products with monthly prices: Starter $49, Growth $99, Multi-location $199. Put the price IDs in `STRIPE_PRICE_*`.
 2. Add a webhook endpoint `https://YOUR_APP_URL/webhooks/stripe` with the events `checkout.session.completed`, `customer.subscription.updated` and `customer.subscription.deleted`. Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
@@ -91,11 +105,14 @@ All `/api` routes need the session cookie from `/api/auth/login` or `/api/auth/s
 | POST | `/api/billing/checkout`, `/portal` | Stripe |
 | POST | `/webhooks/twilio/sms`, `/webhooks/stripe` | Signed webhooks |
 | GET, POST | `/u/:token` | Email unsubscribe |
+| GET | `/api/integrations` | Square connection status |
+| POST | `/api/integrations/square/sync`, `/disconnect` | Sync now; disconnect |
+| GET | `/integrations/square/connect`, `/callback` | Square OAuth (browser redirects) |
 | POST | `/jobs/tick`, `/jobs/weekly-report` | For external cron. `Authorization: Bearer $CRON_SECRET` |
 
 ## Next features worth building
 
-1. **Square sync** through the Square API, so owners stop uploading CSVs. This is the biggest retention feature.
+1. Square webhooks (`payment.updated`) for real-time sync instead of hourly, and applying the Square sync to multiple locations separately.
 2. Password reset by email. Not built yet. For now, reset a password by hand in the database.
 3. "First visit to second visit" sequence for brand-new customers.
 4. Two-way texting: forward customer replies to the owner's phone.

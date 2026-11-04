@@ -11,13 +11,13 @@ await migrate(db, (m) => console.log(`[migrate] ${m}`));
 const providers = providersFromConfig(config);
 const app = await buildApp({ config, db, providers });
 
-app.log.info(`texting: ${providers.sms?.name ?? 'off'}, email: ${providers.email?.name ?? 'off'}, billing: ${config.STRIPE_SECRET_KEY ? 'stripe' : 'off'}`);
+app.log.info(`texting: ${providers.sms?.name ?? 'off'}, email: ${providers.email?.name ?? 'off'}, billing: ${config.STRIPE_SECRET_KEY ? 'stripe' : 'off'}, square: ${app.square ? config.SQUARE_ENVIRONMENT : 'off'}`);
 
 // Built-in scheduler: sends due messages every 15 minutes and the Monday report.
 // Turn it off (RUN_SCHEDULER=0) if you trigger /jobs/tick from an external cron instead.
 const stopScheduler = process.env.RUN_SCHEDULER === '0'
   ? () => {}
-  : startScheduler({ db, providers, appUrl: config.APP_URL, secret: config.SESSION_SECRET, log: (m, extra) => app.log.info(extra ?? {}, m) });
+  : startScheduler({ db, providers, appUrl: config.APP_URL, secret: config.SESSION_SECRET, square: app.square, log: (m, extra) => app.log.info(extra ?? {}, m) });
 
 const close = async () => {
   stopScheduler();
