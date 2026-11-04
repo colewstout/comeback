@@ -30,9 +30,44 @@
   // ---------- auth
   function showAuth(which) {
     $('appView').hidden = true; $('authView').hidden = false;
-    $('loginForm').hidden = which !== 'login'; $('signupForm').hidden = which !== 'signup';
+    ['login', 'signup', 'forgot', 'reset'].forEach((f) => ($(`${f}Form`).hidden = which !== f));
     $('authError').hidden = true;
   }
+
+  // The reset token arrives in the link's #reset=... part. Keep it in memory and clear it
+  // from the address bar so it doesn't linger in history or get copied.
+  let resetToken = null;
+  function takeResetToken() {
+    const m = /^#reset=([A-Za-z0-9_-]{20,200})$/.exec(location.hash);
+    if (!m) return false;
+    resetToken = m[1];
+    history.replaceState(null, '', location.pathname + '#reset');
+    return true;
+  }
+
+  $('forgotForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.submitter; if (btn) btn.disabled = true;
+    try {
+      const r = await api('POST', '/api/auth/forgot', { email: $('fp-email').value });
+      const done = $('forgotDone'); done.textContent = r.message; done.hidden = false;
+      $('authError').hidden = true;
+    } catch (err) { authError(err.message); }
+    finally { if (btn) btn.disabled = false; }
+  });
+
+  $('resetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if ($('rp-pw').value !== $('rp-pw2').value) return authError('The two passwords don’t match.');
+    if (!resetToken) return authError('This page is missing its reset link. Open the link from your email again, or ask for a new one.');
+    try {
+      await api('POST', '/api/auth/reset', { token: resetToken, password: $('rp-pw').value });
+      resetToken = null;
+      location.hash = '#overview';
+      await boot();
+      toast('Your password is changed and you’re logged in.');
+    } catch (err) { authError(err.message); }
+  });
   function authError(msg) { const e = $('authError'); e.textContent = msg; e.hidden = false; }
 
   $('loginForm').addEventListener('submit', async (e) => {
@@ -56,7 +91,9 @@
   // ---------- routing
   const TABS = ['overview', 'import', 'messages', 'settings'];
   function route() {
+    if (takeResetToken() || location.hash === '#reset') return showAuth('reset');
     const h = location.hash.slice(1);
+    if (h === 'forgot') return showAuth('forgot');
     if (!S.me) return showAuth(h === 'signup' ? 'signup' : 'login');
     if (h === 'billing-success') { toast('Thanks! Your subscription is active.'); location.hash = '#settings'; return; }
     const SQ_MSG = {

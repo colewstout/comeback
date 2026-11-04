@@ -19,7 +19,23 @@
       <label class="field">Email<input id="li-email" type="email" autocomplete="email" required></label>
       <label class="field">Password<input id="li-pw" type="password" autocomplete="current-password" required></label>
       <button class="btn btn-primary" type="submit">Log in</button>
+      <p class="muted"><a href="#forgot">Forgot your password?</a></p>
       <p class="muted">New here? <a href="#signup">Start your free 30-day trial</a></p>
+    </form>
+    <form id="forgotForm" class="stack" hidden>
+      <h1>Reset your password</h1>
+      <p class="muted">Enter the email you signed up with and we'll send you a link to choose a new password.</p>
+      <label class="field">Email<input id="fp-email" type="email" autocomplete="email" required></label>
+      <button class="btn btn-primary" type="submit">Send reset link</button>
+      <p class="notice" id="forgotDone" role="status" hidden></p>
+      <p class="muted"><a href="#login">Back to log in</a></p>
+    </form>
+    <form id="resetForm" class="stack" hidden>
+      <h1>Choose a new password</h1>
+      <label class="field">New password<input id="rp-pw" type="password" autocomplete="new-password" minlength="10" required><small>At least 10 characters</small></label>
+      <label class="field">Type it again<input id="rp-pw2" type="password" autocomplete="new-password" minlength="10" required></label>
+      <button class="btn btn-primary" type="submit">Save password and log in</button>
+      <p class="muted">This logs you out on other devices. <a href="#forgot">Need a new link?</a></p>
     </form>
     <form id="signupForm" class="stack" hidden>
       <h1>Start your free trial</h1>
