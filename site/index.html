@@ -1,0 +1,767 @@
+<title>Comeback</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Comeback learns how often each customer buys, flags the ones who have gone quiet, and sends them a friendly win-back message with a discount.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single long page; the hero shows one customer's visit rhythm, and the live demo is the centerpiece. */
+:root{
+  --paper:#F4F6F1; --surface:#FFFFFF; --sunk:#EAEEE7; --ink:#13221C; --muted:#5A6962; --line:#D9DFD6;
+  --pine:#1E5B45; --pine-ink:#FFFFFF; --pine-soft:#DCEBE3; --marigold:#E3A21A; --marigold-soft:#FBF0D6;
+  --ok:#2F7D55; --due:#B27A06; --over:#C2461F; --lapsed:#6E6491; --won:#1E5B45;
+  --ok-bg:#E1F1E7; --due-bg:#FBF0D6; --over-bg:#F9E3DB; --lapsed-bg:#ECE9F3;
+  --shadow:0 1px 2px rgba(19,34,28,.06),0 8px 24px rgba(19,34,28,.06);
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Figtree","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1512; --surface:#15201B; --sunk:#1B2822; --ink:#E6EEE9; --muted:#9AABA2; --line:#27362E;
+  --pine:#62C497; --pine-ink:#0C1A13; --pine-soft:#1C3A2D; --marigold:#F0B84A; --marigold-soft:#3A2F14;
+  --ok:#6CCB95; --due:#E8B54A; --over:#F27D58; --lapsed:#B2A7D2; --won:#62C497;
+  --ok-bg:#183326; --due-bg:#3A2F14; --over-bg:#3D2219; --lapsed-bg:#29253A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1512; --surface:#15201B; --sunk:#1B2822; --ink:#E6EEE9; --muted:#9AABA2; --line:#27362E;
+  --pine:#62C497; --pine-ink:#0C1A13; --pine-soft:#1C3A2D; --marigold:#F0B84A; --marigold-soft:#3A2F14;
+  --ok:#6CCB95; --due:#E8B54A; --over:#F27D58; --lapsed:#B2A7D2; --won:#62C497;
+  --ok-bg:#183326; --due-bg:#3A2F14; --over-bg:#3D2219; --lapsed-bg:#29253A;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55}
+a{color:var(--pine)}
+:focus-visible{outline:2px solid var(--marigold);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1160px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);line-height:1.08;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h2{font-size:clamp(28px,4vw,42px);font-weight:700}
+h3{font-size:20px;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:18px;color:var(--muted);max-width:60ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 15px/1 var(--body);padding:12px 18px;border-radius:999px;border:1px solid transparent;cursor:pointer;text-decoration:none;transition:transform .15s,background .15s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--pine);color:var(--pine-ink)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-ghost:hover{background:var(--sunk)}
+.btn-sm{padding:8px 12px;font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+
+/* nav */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+header.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:24px;padding-block:12px}
+.logo{display:flex;align-items:center;gap:8px;font:800 21px/1 var(--display);color:var(--ink);text-decoration:none}
+.logo svg{flex:none}
+.nav nav{display:flex;gap:20px;margin-left:auto}
+.nav nav a{color:var(--muted);text-decoration:none;font-weight:500;font-size:15px}
+.nav nav a:hover{color:var(--ink)}
+@media (max-width:760px){.nav nav{display:none}.nav .btn{margin-left:auto}}
+
+/* hero */
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding-block:64px 56px}
+.hero h1{font-size:clamp(38px,6vw,66px);font-weight:800}
+.hero h1 em{font-style:normal;color:var(--pine);background:linear-gradient(transparent 62%,var(--marigold-soft) 62%)}
+.hero .copy{display:flex;flex-direction:column;gap:22px;min-width:0}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+.hero .fine{font-size:14px;color:var(--muted)}
+.hcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.hcard .who{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hcard .who b{font-family:var(--display);font-size:20px}
+.hcard .who small{display:block;color:var(--muted);font-size:13px}
+.hstrip{background:var(--sunk);border-radius:12px;padding:14px 12px 8px}
+.hstrip svg{width:100%;height:auto;display:block}
+.hstrip .axis{display:flex;justify-content:space-between;font:11px var(--mono);color:var(--muted);padding-top:4px}
+.bubble{align-self:flex-end;max-width:92%;background:var(--pine);color:var(--pine-ink);border-radius:16px 16px 4px 16px;padding:12px 14px;font-size:14.5px}
+.bubble small{display:block;opacity:.75;font-size:12px;margin-top:6px}
+.reply{align-self:flex-start;background:var(--sunk);border-radius:16px 16px 16px 4px;padding:10px 14px;font-size:14.5px}
+.won{display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:12px;font-size:14px;color:var(--muted)}
+.won b{color:var(--won);font:700 18px var(--display)}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr;padding-block:40px}}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--body);padding:6px 9px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-ok{color:var(--ok);background:var(--ok-bg)}
+.p-due{color:var(--due);background:var(--due-bg)}
+.p-over{color:var(--over);background:var(--over-bg)}
+.p-lapsed{color:var(--lapsed);background:var(--lapsed-bg)}
+.p-won{color:var(--won);background:var(--pine-soft)}
+.p-sent{color:var(--ink);background:var(--sunk)}
+
+/* proof */
+.proof{border-block:1px solid var(--line);background:var(--surface)}
+.proof .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;padding-block:32px}
+.proof .stat b{display:block;font:800 40px/1 var(--display);color:var(--pine);margin-bottom:8px}
+.proof .stat p{color:var(--muted);font-size:15px;max-width:34ch}
+.proof .src{grid-column:1/-1;font-size:12px;color:var(--muted);margin-top:-12px}
+@media (max-width:760px){.proof .wrap{grid-template-columns:1fr;gap:20px}}
+
+section.block{padding-block:80px}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:36px;max-width:720px}
+
+/* how */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;counter-reset:s}
+.step{border-top:2px solid var(--ink);padding-top:18px;display:flex;flex-direction:column;gap:10px}
+.step .n{font:500 13px var(--mono);color:var(--muted)}
+.step p{color:var(--muted)}
+@media (max-width:800px){.steps{grid-template-columns:1fr}}
+
+/* demo */
+.demo{background:var(--sunk)}
+.app{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.app-bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:18px 20px;border-bottom:1px solid var(--line)}
+.app-bar .biz{display:flex;flex-direction:column;gap:2px;margin-right:auto;min-width:0}
+.app-bar .biz b{font:700 20px var(--display)}
+.app-bar .biz span{font-size:13px;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.field select,.field input{font:500 14px var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.field input[type=number]{width:84px}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--line)}
+.tile{padding:16px 20px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile:last-child{border-right:0}
+.tile span{font-size:12.5px;color:var(--muted);font-weight:600}
+.tile b{font:700 26px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.tile small{font-size:12px;color:var(--muted)}
+.tile.hl b{color:var(--over)}
+.tile.good b{color:var(--won)}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}.tile{border-bottom:1px solid var(--line)}.tile:nth-child(2n){border-right:0}.tile:last-child{grid-column:1/-1}}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
+.chip{font:600 13px var(--body);padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.chip .c{font-variant-numeric:tabular-nums;opacity:.7;margin-left:4px}
+.report{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:14px 20px 0;padding:14px 16px;border-radius:12px;background:var(--pine-soft);color:var(--ink);font-size:14.5px}
+.report b{font-family:var(--display);font-size:17px}
+.rows{padding:6px 0 10px}
+.rhead,.row{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(200px,2fr) 110px 100px 120px 108px;gap:16px;align-items:center;padding:10px 20px}
+.rhead{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-block:8px}
+.row{border-top:1px solid var(--line)}
+.row:hover{background:color-mix(in srgb,var(--sunk) 55%,transparent)}
+.row .nm{min-width:0}
+.row .nm b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm small{color:var(--muted);font-size:12.5px}
+.row .rh svg{width:100%;height:24px;display:block}
+.row .gap{font-size:13.5px;line-height:1.35}
+.row .gap small{display:block;color:var(--muted);font-size:12px}
+.row .money{font:600 15px var(--body);font-variant-numeric:tabular-nums}
+.row .money small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+@media (max-width:900px){
+  .rhead{display:none}
+  .row{grid-template-columns:1fr auto;grid-template-areas:"nm st" "rh rh" "gap money" "act act";gap:8px 12px;padding:14px 16px}
+  .row .nm{grid-area:nm}.row .rh{grid-area:rh}.row .gap{grid-area:gap}.row .money{grid-area:money;text-align:right}.row .st{grid-area:st}.row .act{grid-area:act}
+  .row .act .btn{width:100%}
+}
+.legend{display:flex;gap:16px;flex-wrap:wrap;padding:10px 20px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.upload{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 20px;background:var(--paper);border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.upload code{font:12.5px var(--mono);background:var(--sunk);padding:2px 6px;border-radius:6px;color:var(--ink)}
+.upload label.btn{cursor:pointer}
+.upload input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
+.drop-on{outline:2px dashed var(--pine);outline-offset:-6px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,18,14,.45);z-index:50;display:flex;justify-content:flex-end}
+.drawer{background:var(--surface);width:min(520px,100%);height:100%;overflow-y:auto;padding:24px max(20px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) 22px;padding-top:calc(24px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:18px;box-shadow:-12px 0 40px rgba(0,0,0,.2)}
+.drawer .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.drawer h3{font-size:26px}
+.x{background:var(--sunk);border:0;border-radius:50%;width:36px;height:36px;font-size:20px;cursor:pointer;color:var(--ink);flex:none}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.facts div{background:var(--sunk);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--muted)}
+.facts b{display:block;color:var(--ink);font:700 18px var(--display);font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;background:var(--sunk);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;font:600 13px var(--body);padding:7px 14px;border-radius:999px;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.msg{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg.done{border-color:var(--pine);background:color-mix(in srgb,var(--pine-soft) 50%,transparent)}
+.msg .mh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.msg .mh b{font-family:var(--display);font-size:16px}
+.msg textarea{width:100%;min-height:96px;resize:vertical;font:14.5px/1.5 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.msg .ma{display:flex;gap:8px;flex-wrap:wrap}
+.drawer .foot{display:flex;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px}
+.note{font-size:12.5px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:12px;font-size:14px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+
+/* industries */
+.inds{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ind{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.ind .cad{font:500 13px var(--mono);color:var(--pine)}
+.ind p{color:var(--muted);font-size:15px}
+@media (max-width:860px){.inds{grid-template-columns:1fr 1fr}}
+@media (max-width:540px){.inds{grid-template-columns:1fr}}
+
+/* pricing */
+.prices{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:stretch}
+.price{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.price.pop{border:2px solid var(--pine);position:relative}
+.price.pop .tag{position:absolute;top:-12px;left:24px;background:var(--pine);color:var(--pine-ink);font:600 12px var(--body);padding:5px 10px;border-radius:999px}
+.price .amt{font:800 44px/1 var(--display)}
+.price .amt small{font:500 15px var(--body);color:var(--muted)}
+.price ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;font-size:15px;flex:1}
+.price li{display:flex;gap:8px}
+.price li::before{content:"✓";color:var(--pine);font-weight:700}
+.price li.soon{color:var(--muted)}
+.price li.soon::before{content:"○";color:var(--muted)}
+.price .btn{width:100%}
+.perf{margin-top:16px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;background:var(--marigold-soft);border-radius:16px;padding:18px 22px}
+.perf p{max-width:70ch}
+@media (max-width:860px){.prices{grid-template-columns:1fr}}
+
+/* compare */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:680px;font-size:15px}
+th,td{text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td:first-child{font-weight:600}
+tr.us td{background:var(--pine-soft)}
+
+/* faq */
+.faq{display:grid;grid-template-columns:1fr 1fr;gap:12px 32px}
+details{border-bottom:1px solid var(--line);padding-block:16px}
+summary{cursor:pointer;font-weight:600;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::after{content:"+";font:500 22px/1 var(--mono);color:var(--muted)}
+details[open] summary::after{content:"–"}
+details p{color:var(--muted);margin-top:10px}
+@media (max-width:760px){.faq{grid-template-columns:1fr}}
+
+/* signup */
+.signup{background:var(--pine);color:var(--pine-ink)}
+.signup .wrap{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;padding-block:72px}
+.signup h2{color:var(--pine-ink)}
+.signup p{opacity:.85;margin-top:12px}
+.signup form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.signup input,.signup select{font:500 15px var(--body);padding:13px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--pine-ink) 30%,transparent);background:color-mix(in srgb,var(--pine-ink) 10%,transparent);color:var(--pine-ink);min-width:0}
+.signup input::placeholder{color:color-mix(in srgb,var(--pine-ink) 65%,transparent)}
+.signup select option{color:#13221C}
+.signup .full{grid-column:1/-1}
+.signup button{background:var(--marigold);color:#1b1404}
+.signup .msgbox{grid-column:1/-1;font-size:14px;padding:12px 14px;border-radius:12px;background:color-mix(in srgb,var(--pine-ink) 14%,transparent)}
+@media (max-width:860px){.signup .wrap{grid-template-columns:1fr}}
+@media (max-width:480px){.signup form{grid-template-columns:1fr}}
+footer{padding-block:32px;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="Comeback home">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="var(--pine)" stroke-width="3" stroke-dasharray="52 18" stroke-linecap="round" transform="rotate(-30 13 13)"/><circle cx="21.5" cy="7" r="3" fill="var(--marigold)"/></svg>
+      Comeback
+    </a>
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a><a href="#demo">Live demo</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="#start">Start free trial</a>
+  </div>
+</header>
+
+<main id="top">
+<section class="hero">
+  <div class="wrap">
+    <div class="copy">
+      <span class="eyebrow">Customer win-back for local businesses</span>
+      <h1>See who stopped coming in. <em>Bring them back</em> on autopilot.</h1>
+      <p class="lede">Comeback learns how often each of your customers usually buys, tells you the moment someone is overdue, and sends them a friendly note with a discount. Every week you see exactly how much money came back.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="#demo">Try it with sample data</a>
+        <a class="btn btn-ghost" href="#pricing">See pricing</a>
+      </div>
+      <p class="fine">Works from a spreadsheet export. No new software for your staff to learn. 30-day free trial.</p>
+    </div>
+    <div class="hcard" aria-label="Example: one customer's visit history">
+      <div class="who">
+        <div><b>Dana Reyes</b><small>Usually every 6 weeks · avg $92</small></div>
+        <span class="pill p-over">23 days overdue</span>
+      </div>
+      <div class="hstrip">
+        <svg viewBox="0 0 300 30" role="img" aria-label="Visits roughly every six weeks, then a gap">
+          <line x1="4" y1="15" x2="296" y2="15" stroke="var(--line)" stroke-width="2"/>
+          <g fill="var(--pine)"><circle cx="14" cy="15" r="5"/><circle cx="56" cy="15" r="5"/><circle cx="96" cy="15" r="5"/><circle cx="140" cy="15" r="5"/><circle cx="181" cy="15" r="5"/></g>
+          <line x1="223" y1="15" x2="262" y2="15" stroke="var(--over)" stroke-width="2" stroke-dasharray="4 4"/>
+          <circle cx="223" cy="15" r="6" fill="var(--surface)" stroke="var(--over)" stroke-width="2.5"/>
+          <line x1="262" y1="4" x2="262" y2="26" stroke="var(--ink)" stroke-width="1.5"/>
+        </svg>
+        <div class="axis"><span>May</span><span>Jul</span><span>Sep</span><span>Today</span></div>
+      </div>
+      <div class="bubble">Hi Dana, it's Maple &amp; Main. We miss you! Here's 15% off your next cut and color before Nov 18. Code DANA15.<small>Sent automatically · Text</small></div>
+      <div class="reply">Omg yes, booking Thursday 🙌</div>
+      <div class="won"><span>Booked 2 days later</span><b class="num">+$92 recovered</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="proof" aria-label="Why this matters">
+  <div class="wrap">
+    <div class="stat"><b class="num">~35%</b><p>of first-time salon clients ever come back for a second visit.</p></div>
+    <div class="stat"><b class="num">~31%</b><p>of small businesses use any email automation beyond basic auto-replies.</p></div>
+    <div class="stat"><b class="num">$2,400</b><p>a month back for a salon with 300 lapsed clients if just 1 in 10 return at an $80 visit.</p></div>
+    <p class="src">Sources: Boulevard and Meevo retention data; 2024 Statista survey (cited secondhand). The last figure is an example calculation.</p>
+  </div>
+</section>
+
+<section class="block" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2>Your sales history already knows who's slipping away</h2>
+      <p class="lede">Most owners can tell you their regulars by name. Nobody can keep track of 800 of them. Comeback does that part.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="n">Step 1 · 10 minutes</span><h3>Bring your customer list</h3><p>Export your sales from Square, your booking app, or a spreadsheet and drop it in. We'll do the setup with you on a call if you'd like.</p></div>
+      <div class="step"><span class="n">Step 2 · automatic</span><h3>We learn each customer's rhythm</h3><p>Some clients come every 4 weeks, others every 10. Comeback sets a personal "due date" for each one and flags them the day they go quiet.</p></div>
+      <div class="step"><span class="n">Step 3 · every week</span><h3>Messages go out, money comes back</h3><p>A friendly check-in, then a discount, then a last call. You approve the wording once. Every Monday you get a report: who came back and what they spent.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block demo" id="demo">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Live demo</span>
+      <h2>Try it on a sample business, or on your own export</h2>
+      <p class="lede">The data below is made up. Pick your industry, open any overdue customer to see their win-back messages, or run the whole thing on autopilot.</p>
+    </div>
+
+    <div class="app" id="app">
+      <div class="app-bar">
+        <div class="biz"><b id="bizName">Maple &amp; Main Salon</b><span id="bizSub">Sample data · 40 customers</span></div>
+        <label class="field" for="preset">Industry
+          <select id="preset"></select>
+        </label>
+        <label class="field" for="discount">Discount %
+          <input id="discount" type="number" min="0" max="50" step="5" value="15">
+        </label>
+        <label class="field" for="threshold">Overdue after
+          <select id="threshold">
+            <option value="1.25">1.25× usual gap</option>
+            <option value="1.5" selected>1.5× usual gap</option>
+            <option value="2">2× usual gap</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+      <div id="reportWrap"></div>
+
+      <div class="toolbar">
+        <div class="chips" id="chips" role="group" aria-label="Filter customers"></div>
+        <button class="btn btn-ghost btn-sm" id="ffBtn" type="button">Fast-forward 3 weeks</button>
+        <button class="btn btn-primary btn-sm" id="autoBtn" type="button">Win back all overdue</button>
+      </div>
+
+      <div class="rows" id="rows" aria-live="polite"></div>
+
+      <div class="legend" aria-hidden="true">
+        <span><svg width="12" height="12"><circle cx="6" cy="6" r="4.5" fill="var(--pine)"/></svg>Past visit</span>
+        <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--ok)" stroke-width="2"/></svg>Next expected visit</span>
+        <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="none" stroke="var(--over)" stroke-width="2"/></svg>Missed expected visit</span>
+        <span><svg width="10" height="14"><line x1="5" y1="1" x2="5" y2="13" stroke="var(--ink)" stroke-width="1.5"/></svg>Today</span>
+        <span>Timeline shows the last 12 months</span>
+      </div>
+
+      <div class="upload" id="drop">
+        <span>Use your own data: a CSV with one row per purchase, with columns like <code>name, email or phone, date, amount</code>. It stays in your browser.</span>
+        <label class="btn btn-ghost btn-sm" for="csv">Upload CSV</label>
+        <input id="csv" type="file" accept=".csv,text/csv">
+        <button class="btn btn-ghost btn-sm" id="sampleBtn" type="button" hidden>Back to sample data</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="who">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Built for repeat-visit businesses</span>
+      <h2>If your customers come back on a schedule, Comeback can tell when they stop</h2>
+    </div>
+    <div class="inds">
+      <div class="ind"><span class="cad">Rebooks every 4–8 weeks</span><h3>Salons and barbers</h3><p>Catch first-timers who never rebooked and regulars drifting to the place down the street.</p></div>
+      <div class="ind"><span class="cad">Every 6–8 weeks</span><h3>Dog groomers</h3><p>Messages written about their dog, not "valued customer." Pet owners respond.</p></div>
+      <div class="ind"><span class="cad">Every 6–10 weeks</span><h3>Car detailers</h3><p>High ticket, easy to forget. One recovered detail can pay for months of Comeback.</p></div>
+      <div class="ind"><span class="cad">Every 1–2 weeks</span><h3>Fitness and yoga studios</h3><p>Spot members skipping class before they cancel the membership.</p></div>
+      <div class="ind"><span class="cad">Every 1–3 weeks</span><h3>Cafés and restaurants</h3><p>Turn your loyalty list into a "we saved your table" note when a regular disappears.</p></div>
+      <div class="ind"><span class="cad">Any regular cadence</span><h3>Laundry, florists, pet stores</h3><p>Anything people buy again. If it's in your sales history, we can track it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="pricing" style="background:var(--surface);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Pricing</span>
+      <h2>Costs less than one customer you'd otherwise lose</h2>
+      <p class="lede">Simple monthly plans. Cancel any time. Founding members get setup done for them and half off for three months.</p>
+    </div>
+    <div class="prices">
+      <div class="price">
+        <h3>Starter</h3>
+        <div class="amt num">$49<small>/month</small></div>
+        <p class="note">For a single shop getting started.</p>
+        <ul>
+          <li>Up to 500 customers</li>
+          <li>Visit rhythm tracking and overdue alerts</li>
+          <li>Email win-back sequences</li>
+          <li>Weekly "money recovered" report</li>
+          <li>Spreadsheet upload</li>
+        </ul>
+        <a class="btn btn-ghost" href="#start">Start free trial</a>
+      </div>
+      <div class="price pop">
+        <span class="tag">Most popular</span>
+        <h3>Growth</h3>
+        <div class="amt num">$99<small>/month</small></div>
+        <p class="note">Runs itself once you approve the messages.</p>
+        <ul>
+          <li>Up to 2,500 customers</li>
+          <li>Text and email messages</li>
+          <li>Automatic sending on a schedule</li>
+          <li>Personal discount codes and redemption tracking</li>
+          <li class="soon">Square and booking-app sync (coming soon)</li>
+        </ul>
+        <a class="btn btn-primary" href="#start">Start free trial</a>
+      </div>
+      <div class="price">
+        <h3>Multi-location</h3>
+        <div class="amt num">$199<small>/month</small></div>
+        <p class="note">For owners with more than one shop.</p>
+        <ul>
+          <li>Up to 3 locations, 10,000 customers</li>
+          <li>Everything in Growth</li>
+          <li>Done-for-you message writing</li>
+          <li>Monthly strategy call</li>
+          <li>Priority support</li>
+        </ul>
+        <a class="btn btn-ghost" href="#start">Talk to us</a>
+      </div>
+    </div>
+    <div class="perf">
+      <p><b>Prefer to pay only when it works?</b> Choose Pay-as-you-recover: $29/month plus 10% of revenue from customers who came back, capped at $199/month.</p>
+      <a class="btn btn-ghost" href="#start">Ask about it</a>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="compare">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Compared to other options</span>
+      <h2>Made for the shop that doesn't have a marketing person</h2>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Option</th><th>Typical price</th><th>Win-back</th><th>Who sets it up</th></tr></thead>
+        <tbody>
+          <tr class="us"><td>Comeback</td><td>$49–199/mo</td><td>Personal rhythm for every customer, 3-step sequence, dollars reported weekly</td><td>We do, on a 20-minute call</td></tr>
+          <tr><td>Built into your POS</td><td>Free–$15+/mo</td><td>Basic "lapsed customer" email with one fixed rule</td><td>You, if you find the setting</td></tr>
+          <tr><td>All-in-one marketing suites</td><td>$300–600/mo per location</td><td>Campaign tools among many other features</td><td>You, plus onboarding sessions</td></tr>
+          <tr><td>Email tools</td><td>$0–100+/mo</td><td>Possible, but you design every rule and email</td><td>You</td></tr>
+          <tr><td>Marketing agency</td><td>Custom, often $500+/mo</td><td>Hands-on reactivation campaigns</td><td>Them, at agency prices</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="sec-head"><span class="eyebrow">Questions</span><h2>Things owners ask us</h2></div>
+    <div class="faq">
+      <details><summary>Do I need Square or a special booking system?</summary><p>No. If you can export your sales or appointments to a spreadsheet, Comeback works. Direct syncing with Square and popular booking apps is on the way.</p></details>
+      <details><summary>Will this annoy my customers?</summary><p>Each customer gets at most three messages per lapse, spaced over three weeks, and never more than one a week. The sequence stops the moment they come back or opt out.</p></details>
+      <details><summary>Is texting customers legal?</summary><p>Yes, when they've agreed to it. Comeback only texts customers who opted in, includes "Reply STOP to opt out" in every text, and respects quiet hours. Customers without text consent get email.</p></details>
+      <details><summary>How do I know it's working?</summary><p>Each customer gets a personal discount code. When they come back, we match the visit to the message and show the revenue in your Monday report.</p></details>
+      <details><summary>How big a discount should I offer?</summary><p>Most owners use 10–20%. The first message has no discount at all, so you only give money away to customers who need a bigger nudge.</p></details>
+      <details><summary>Can I cancel?</summary><p>Any time, from your account page. Your customer data is yours, and you can download it before you go.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="signup" id="start">
+  <div class="wrap">
+    <div>
+      <h2>Become a founding member</h2>
+      <p>We're onboarding the first 25 businesses by hand. You get free done-for-you setup, half off for three months, and a direct line to the founder.</p>
+    </div>
+    <form id="signupForm" novalidate>
+      <input id="su-name" name="name" placeholder="Your name" autocomplete="name" required>
+      <input id="su-biz" name="business" placeholder="Business name" autocomplete="organization" required>
+      <input id="su-email" class="full" name="email" type="email" placeholder="Email" autocomplete="email" required>
+      <select id="su-type" class="full" name="type" aria-label="Type of business">
+        <option>Salon or barber</option><option>Dog groomer</option><option>Car detailer</option><option>Fitness studio</option><option>Café or restaurant</option><option>Something else</option>
+      </select>
+      <button class="btn full" type="submit">Request early access</button>
+      <div class="msgbox" id="suMsg" hidden></div>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap"><span>© 2026 Comeback</span><span>Keep your regulars regular.</span></div></footer>
+
+<div class="scrim" id="scrim" hidden><aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle"></aside></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const DAY=864e5;
+const today=new Date(); today.setHours(12,0,0,0);
+const PRESETS={
+  salon:{label:"Hair salon",biz:"Maple & Main Salon",days:42,avg:85,noun:"appointment",thing:"your next cut and color"},
+  groomer:{label:"Dog groomer",biz:"Sudsy Paws Grooming",days:49,avg:72,noun:"groom",thing:"a bath and trim for your pup"},
+  detailer:{label:"Car detailer",biz:"Mirror Finish Detailing",days:60,avg:165,noun:"detail",thing:"a full interior and exterior detail"},
+  fitness:{label:"Fitness studio",biz:"Northside Cycle Studio",days:9,avg:28,noun:"class",thing:"your next class"},
+  cafe:{label:"Café or restaurant",biz:"Corner Table Café",days:12,avg:19,noun:"visit",thing:"your usual"},
+  other:{label:"Other business",biz:"Your Business",days:30,avg:60,noun:"visit",thing:"your next purchase"}
+};
+const NAMES=["Dana Reyes","Marcus Bell","Priya Shah","Tom Whitaker","Aisha Grant","Lena Novak","Chris Ortiz","Jordan Lee","Hannah Cole","Diego Ramos","Mei Chen","Sam Patel","Olivia Brooks","Noah Kim","Grace Turner","Ethan Moore","Sofia Alvarez","Liam Foster","Zoe Hughes","Ben Carter","Ruby Walsh","Kai Nguyen","Ava Mitchell","Omar Haddad","Isla Pearson","Leo Fischer","Maya Robinson","Jack Sullivan","Nina Petrova","Ryan Doyle","Elena Rossi","Tyler Grant","Chloe Martin","Victor Lane","Amara Okafor","Felix Wagner","Tess Morgan","Andre Silva","Julia Park","Owen Price"];
+
+const S={preset:"salon",discount:15,threshold:1.5,filter:"attention",custom:null,customName:"",out:{},recovered:0,won:0,channel:"sms",ffDone:false};
+
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function sample(key){
+  const p=PRESETS[key], r=rng(key.length*977+13), out=[];
+  NAMES.forEach((name,i)=>{
+    const iv=p.days*(0.65+r()*0.8);
+    const roll=r(); let ratio;
+    if(roll<.45) ratio=.15+r()*.8; else if(roll<.62) ratio=1.0+r()*.45; else if(roll<.84) ratio=1.55+r()*1.4; else ratio=3.1+r()*3;
+    const single = i%9===4;
+    let n = single?1:2+Math.floor(r()*8);
+    let d=today.getTime()-iv*ratio*DAY; const visits=[];
+    for(let k=0;k<n;k++){ visits.unshift({t:d,amt:Math.max(5,Math.round(p.avg*(0.7+r()*0.7)/5)*5)}); d-=iv*(0.85+r()*0.3)*DAY; }
+    const first=name.split(" ")[0].toLowerCase();
+    out.push({id:"s"+i,name,contact:i%3===0?first+"@example.com":"(555) 01"+String(10+i).padStart(2,"0"),visits});
+  });
+  return out;
+}
+function median(a){const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2}
+
+function analyze(list){
+  const p=PRESETS[S.preset];
+  return list.map(c=>{
+    const v=[...c.visits].sort((a,b)=>a.t-b.t);
+    const gaps=[];for(let i=1;i<v.length;i++){const g=(v[i].t-v[i-1].t)/DAY;if(g>=1)gaps.push(g)}
+    const learned=gaps.length>0;
+    const interval=Math.max(3,learned?median(gaps):p.days);
+    const last=v[v.length-1].t, since=Math.round((today-last)/DAY);
+    const ratio=since/interval;
+    const avg=v.reduce((s,x)=>s+x.amt,0)/v.length;
+    const monthly=avg*30/interval;
+    const o=S.out[c.id]||{step:0,won:false};
+    let status;
+    if(o.won) status="won";
+    else if(ratio>=3) status="lapsed";
+    else if(ratio>=S.threshold) status="over";
+    else if(ratio>=1) status="due";
+    else status="ok";
+    const overdueBy=Math.max(0,Math.round(since-interval));
+    return {...c,v,interval,learned,last,since,ratio,avg,monthly,status,o,overdueBy,next:last+interval*DAY};
+  });
+}
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const money=n=>"$"+Math.round(n).toLocaleString("en-US");
+const fmtD=t=>new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+const gapTxt=d=>d>=14?`every ${Math.round(d/7)} wks`:`every ${Math.round(d)} days`;
+const agoTxt=d=>d>=14?`${Math.round(d/7)} weeks`:`${d} days`;
+
+const PILL={ok:["p-ok","On track"],due:["p-due","Due now"],over:["p-over","Overdue"],lapsed:["p-lapsed","Lapsed"],won:["p-won","Came back"]};
+function pill(c){
+  if(c.status==="won") return `<span class="pill p-won">Came back</span>`;
+  if(c.o.step>0) return `<span class="pill p-sent">Message ${c.o.step} of 3 sent</span>`;
+  const [cls,lab]=PILL[c.status];
+  const extra=(c.status==="over"||c.status==="lapsed")?` · ${c.overdueBy}d`:"";
+  return `<span class="pill ${cls}">${lab}${extra}</span>`;
+}
+
+function strip(c){
+  const W=260,H=24,y=12,start=today-365*DAY,end=today.getTime()+75*DAY;
+  const x=t=>4+Math.max(0,Math.min(1,(t-start)/(end-start)))*(W-8);
+  const col={ok:"var(--ok)",due:"var(--due)",over:"var(--over)",lapsed:"var(--lapsed)",won:"var(--won)"}[c.status];
+  let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><line x1="4" y1="${y}" x2="${W-4}" y2="${y}" stroke="var(--line)" stroke-width="2"/>`;
+  const xt=x(today.getTime());
+  if(c.status!=="won"&&c.next<=today.getTime()){
+    s+=`<line x1="${x(c.next)}" y1="${y}" x2="${xt}" y2="${y}" stroke="${col}" stroke-width="2" stroke-dasharray="3 3"/>`;
+  }
+  c.v.forEach(v=>{if(v.t>=start)s+=`<circle cx="${x(v.t).toFixed(1)}" cy="${y}" r="4" fill="var(--pine)"/>`});
+  if(c.status==="won") s+=`<circle cx="${xt-6}" cy="${y}" r="4.5" fill="var(--marigold)"/>`;
+  else s+=`<circle cx="${x(c.next).toFixed(1)}" cy="${y}" r="5" fill="var(--surface)" stroke="${c.next>today?"var(--ok)":col}" stroke-width="2"/>`;
+  s+=`<line x1="${xt}" y1="3" x2="${xt}" y2="${H-3}" stroke="var(--ink)" stroke-width="1.5"/></svg>`;
+  return s;
+}
+
+let data=[];
+function render(){
+  const p=PRESETS[S.preset];
+  const list=S.custom||sample(S.preset);
+  data=analyze(list);
+  $("bizName").textContent=S.custom?S.customName:p.biz;
+  $("bizSub").textContent=(S.custom?"Your uploaded data":"Sample data")+` · ${data.length} customers`;
+  const at=data.filter(c=>c.status==="over"||c.status==="lapsed");
+  const due=data.filter(c=>c.status==="due");
+  const slipping=at.reduce((s,c)=>s+c.monthly,0);
+  const rec=slipping*0.2;
+  const yr=data.reduce((s,c)=>s+c.avg*365/c.interval,0);
+  $("tiles").innerHTML=`
+    <div class="tile"><span>Customers tracked</span><b>${data.length}</b><small>${money(yr)} a year if all stay</small></div>
+    <div class="tile"><span>Due this week</span><b>${due.length}</b><small>Right on their usual gap</small></div>
+    <div class="tile hl"><span>Overdue or lapsed</span><b>${at.length}</b><small>${Math.round(at.length/data.length*100)}% of your list</small></div>
+    <div class="tile hl"><span>Revenue slipping</span><b>${money(slipping)}<small>/mo</small></b><small>From overdue customers</small></div>
+    <div class="tile good"><span>Recovered</span><b>${money(S.recovered)}</b><small>${S.won} customer${S.won===1?"":"s"} came back${S.ffDone?" (simulated)":""}</small></div>`;
+  const contacted=data.filter(c=>c.o.step>0||c.o.won).length;
+  $("reportWrap").innerHTML=S.ffDone?`<div class="report"><b>Monday report (simulated)</b><span>${S.won} of ${contacted} customers contacted came back and spent ${money(S.recovered)}. At the $99 Growth plan that's a ${(S.recovered/99).toFixed(1)}× return.</span></div>`
+    :`<div class="report"><b>Estimated upside</b><span>Winning back 1 in 5 overdue customers would bring in about ${money(rec)} a month.</span></div>`;
+
+  const F={attention:["Needs attention",c=>["due","over","lapsed"].includes(c.status)&&!c.o.step],over:["Overdue",c=>c.status==="over"],lapsed:["Lapsed",c=>c.status==="lapsed"],due:["Due now",c=>c.status==="due"],contacted:["Contacted",c=>c.o.step>0||c.o.won],ok:["On track",c=>c.status==="ok"],all:["All",()=>true]};
+  $("chips").innerHTML=Object.entries(F).map(([k,[lab,fn]])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${S.filter===k}">${lab}<span class="c">${data.filter(fn).length}</span></button>`).join("");
+  const rank={lapsed:1,over:0,due:2,won:3,ok:4};
+  const shown=data.filter(F[S.filter][1]).sort((a,b)=>rank[a.status]-rank[b.status]||b.monthly*b.ratio-a.monthly*a.ratio);
+  $("autoBtn").textContent=`Win back all overdue (${at.filter(c=>!c.o.step&&!c.o.won).length})`;
+  $("rows").innerHTML=`<div class="rhead"><span>Customer</span><span>Visit rhythm</span><span>Usual gap</span><span>Avg spend</span><span>Status</span><span></span></div>`+
+   (shown.length?shown.map(c=>`<div class="row">
+      <div class="nm"><b>${esc(c.name)}</b><small>${c.v.length} visit${c.v.length>1?"s":""} · last ${fmtD(c.last)}</small></div>
+      <div class="rh">${strip(c)}</div>
+      <div class="gap">${c.learned?gapTxt(c.interval):"New customer"}<small>${c.status==="won"?"back after "+agoTxt(c.since):c.learned?"seen "+agoTxt(c.since)+" ago":"no 2nd visit in "+agoTxt(c.since)}</small></div>
+      <div class="money">${money(c.avg)}<small>${money(c.monthly)}/mo</small></div>
+      <div class="st">${pill(c)}</div>
+      <div class="act"><button class="btn ${c.status==="ok"||c.status==="won"?"btn-ghost":"btn-primary"} btn-sm" type="button" data-open="${c.id}">${c.status==="won"?"View":c.o.step?"Continue":"Win back"}</button></div>
+    </div>`).join(""):`<div class="empty">Nobody here right now. That's good news.</div>`);
+}
+
+function first(c){return c.name.trim().split(/\s+/)[0]}
+function code(c){return (first(c).replace(/[^a-z]/gi,"").toUpperCase().slice(0,8)||"WELCOME")+S.discount}
+function msgs(c){
+  const p=PRESETS[S.preset], biz=S.custom?S.customName:p.biz, exp=fmtD(today.getTime()+14*DAY), f=first(c), stop=S.channel==="sms"?" Reply STOP to opt out.":"";
+  const when=c.learned?`It's been about ${agoTxt(c.since)} since your last ${p.noun}`:`Thanks again for coming in ${agoTxt(c.since)} ago`;
+  return [
+    {day:"Day 0",title:"Friendly check-in",text:`Hi ${f}, it's ${biz}. ${when}. Want us to save you a spot this week? Just reply to this message.${stop}`},
+    {day:"Day 7",title:"Discount offer",text:`Hi ${f}, we'd love to see you again! Here's ${S.discount}% off ${p.thing} if you come in before ${exp}. Use code ${code(c)}.${stop}`},
+    {day:"Day 21",title:"Last call",text:`Last reminder, ${f}: your ${S.discount}% off code ${code(c)} expires ${exp}. After this we'll stop the reminders. Hope to see you soon! – ${biz}.${stop}`}
+  ];
+}
+
+let openId=null, lastFocus=null;
+function openDrawer(id){
+  openId=id; const c=data.find(x=>x.id===id); if(!c) return;
+  const m=msgs(c), step=c.o.step;
+  $("drawer").innerHTML=`
+    <div class="top"><div><span class="eyebrow">Win-back plan</span><h3 id="dTitle">${esc(c.name)}</h3><p class="note">${esc(c.contact||"No contact on file")}</p></div><button class="x" type="button" id="dClose" aria-label="Close">×</button></div>
+    <div class="facts">
+      <div><b>${c.learned?gapTxt(c.interval).replace("every ",""):"—"}</b>usual gap</div>
+      <div><b>${agoTxt(c.since)}</b>since last visit</div>
+      <div><b>${money(c.avg)}</b>avg spend</div>
+    </div>
+    <div>${pill(c)}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="note">Send as</span>
+      <div class="seg" role="group" aria-label="Channel"><button type="button" data-ch="sms" aria-pressed="${S.channel==="sms"}">Text</button><button type="button" data-ch="email" aria-pressed="${S.channel==="email"}">Email</button></div>
+    </div>
+    ${m.map((x,i)=>`<div class="msg ${step>i?"done":""}">
+      <div class="mh"><span><b>${x.title}</b> · <span class="note">${x.day}</span></span>${step>i?`<span class="pill p-won">Sent</span>`:step===i&&!c.o.won?`<span class="pill p-due">Next</span>`:""}</div>
+      <textarea id="m-${c.id}-${i}" aria-label="${x.title} message">${esc(x.text)}</textarea>
+      <div class="ma"><button class="btn btn-ghost btn-sm" type="button" data-copy="${i}">Copy text</button>${step===i&&!c.o.won?`<button class="btn btn-primary btn-sm" type="button" data-send="${i}">Mark as sent</button>`:""}</div>
+    </div>`).join("")}
+    <div class="foot">
+      ${c.o.won?`<p class="note">${esc(first(c))} came back. ${money(c.avg)} added to your recovered total.</p>`:`<button class="btn btn-primary" type="button" id="wonBtn">${esc(first(c))} came back</button>`}
+    </div>
+    <p class="note">In the live product, these send automatically on schedule once you approve the wording, and stop as soon as the customer returns. In this demo nothing is sent.</p>`;
+  lastFocus=document.activeElement;
+  $("scrim").hidden=false; document.body.style.overflow="hidden";
+  $("dClose").focus();
+}
+function closeDrawer(){$("scrim").hidden=true;document.body.style.overflow="";openId=null;if(lastFocus)lastFocus.focus()}
+function setOut(id,patch){S.out[id]=Object.assign({step:0,won:false},S.out[id],patch)}
+function markWon(c){if(S.out[c.id]&&S.out[c.id].won)return;setOut(c.id,{won:true});S.recovered+=c.avg;S.won++}
+
+let tt; function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,3200)}
+
+$("drawer").addEventListener("click",e=>{
+  const c=data.find(x=>x.id===openId); if(!c) return;
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.id==="dClose") return closeDrawer();
+  if(b.dataset.ch){S.channel=b.dataset.ch;render();return openDrawer(c.id)}
+  if(b.dataset.copy!==undefined){
+    const ta=$(`m-${c.id}-${b.dataset.copy}`);
+    const fallback=()=>{ta.focus();ta.select();toast("Text selected. Press Ctrl+C or Cmd+C to copy.")};
+    try{navigator.clipboard.writeText(ta.value).then(()=>toast("Copied"),fallback)}catch(_){fallback()}
+    return;
+  }
+  if(b.dataset.send!==undefined){setOut(c.id,{step:+b.dataset.send+1});render();openDrawer(c.id);toast(`Message ${+b.dataset.send+1} marked as sent`);return}
+  if(b.id==="wonBtn"){markWon(c);render();openDrawer(c.id);toast(`${first(c)} is back: +${money(c.avg)}`)}
+});
+$("scrim").addEventListener("click",e=>{if(e.target===$("scrim"))closeDrawer()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("scrim").hidden)closeDrawer()});
+
+$("rows").addEventListener("click",e=>{const b=e.target.closest("[data-open]");if(b)openDrawer(b.dataset.open)});
+$("chips").addEventListener("click",e=>{const b=e.target.closest("[data-f]");if(b){S.filter=b.dataset.f;render()}});
+$("autoBtn").addEventListener("click",()=>{
+  const t=data.filter(c=>(c.status==="over"||c.status==="lapsed")&&!c.o.step&&!c.o.won);
+  if(!t.length) return toast("Everyone overdue is already in a sequence.");
+  t.forEach(c=>setOut(c.id,{step:1})); S.filter="contacted"; render();
+  toast(`Sent the first check-in to ${t.length} customers (demo). Follow-ups go out on day 7 and day 21.`);
+});
+$("ffBtn").addEventListener("click",()=>{
+  const r=rng(Date.now()%100000);
+  const cand=data.filter(c=>c.o.step>0&&!c.o.won);
+  if(!cand.length) return toast("Start some win-backs first, then fast-forward.");
+  let n=0;
+  cand.forEach(c=>{const pr=c.status==="lapsed"?.12:.26; if(r()<pr){markWon(c);n++} else setOut(c.id,{step:3})});
+  S.ffDone=true; render();
+  toast(`Three weeks later: ${n} of ${cand.length} came back (simulated).`);
+});
+
+const sel=$("preset"); sel.innerHTML=Object.entries(PRESETS).map(([k,p])=>`<option value="${k}">${p.label}</option>`).join("");
+sel.addEventListener("change",()=>{S.preset=sel.value;if(!S.custom){S.out={};S.recovered=0;S.won=0;S.ffDone=false}render()});
+$("discount").addEventListener("input",e=>{const v=Math.max(0,Math.min(50,+e.target.value||0));S.discount=v;render()});
+$("threshold").addEventListener("change",e=>{S.threshold=+e.target.value;render()});
+
+/* CSV */
+function parseCSV(text){const rows=[];let row=[],f="",q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}else if(ch==='"')q=true;else if(ch===","){row.push(f);f=""}else if(ch==="\n"||ch==="\r"){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(f);rows.push(row);row=[];f=""}else f+=ch}if(f||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>x.trim()))}
+function loadCSV(text,fname){
+  const rows=parseCSV(text); if(rows.length<2) return toast("That file looks empty. It needs a header row and at least one purchase.");
+  const h=rows[0].map(x=>x.trim().toLowerCase());
+  const find=re=>h.findIndex(x=>re.test(x));
+  const iN=find(/name|customer|client/), iC=find(/email|phone|contact|mobile/), iD=find(/date|time|visit|purchased|created/), iA=find(/amount|total|spend|price|revenue|sales|net/);
+  if(iD<0||(iN<0&&iC<0)) return toast("Couldn't find a date column and a name or contact column. Check the header row.");
+  const map=new Map();
+  rows.slice(1).forEach(r=>{
+    const t=Date.parse((r[iD]||"").trim()); if(isNaN(t)) return;
+    const name=(iN>=0?r[iN]:"").trim()||(iC>=0?r[iC]:"").trim(); if(!name) return;
+    const contact=iC>=0?(r[iC]||"").trim():"";
+    const key=(contact||name).toLowerCase();
+    const amt=iA>=0?parseFloat(String(r[iA]).replace(/[^0-9.\-]/g,""))||0:0;
+    if(!map.has(key)) map.set(key,{id:"u"+map.size,name,contact,visits:[]});
+    map.get(key).visits.push({t,amt});
+  });
+  const list=[...map.values()];
+  if(!list.length) return toast("No rows had a readable date. Try dates like 2026-03-14 or 3/14/2026.");
+  S.custom=list; S.customName=fname.replace(/\.csv$/i,"")||"Your business"; S.out={}; S.recovered=0; S.won=0; S.ffDone=false; S.filter="attention";
+  $("sampleBtn").hidden=false; render(); toast(`Loaded ${list.length} customers from ${fname}`);
+}
+function readFile(file){if(!file)return;const fr=new FileReader();fr.onload=()=>loadCSV(String(fr.result),file.name);fr.readAsText(file)}
+$("csv").addEventListener("change",e=>{readFile(e.target.files[0]);e.target.value=""});
+const drop=$("drop");
+["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drop-on")}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drop-on")}));
+drop.addEventListener("drop",e=>readFile(e.dataTransfer.files[0]));
+$("sampleBtn").addEventListener("click",()=>{S.custom=null;S.out={};S.recovered=0;S.won=0;S.ffDone=false;$("sampleBtn").hidden=true;render()});
+
+/* signup (not yet connected to a backend) */
+$("signupForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const em=$("su-email").value.trim(), nm=$("su-name").value.trim();
+  const box=$("suMsg"); box.hidden=false;
+  if(!nm||!/^\S+@\S+\.\S+$/.test(em)){box.textContent="Please add your name and a valid email.";return}
+  box.textContent=`Thanks, ${nm}. This is a preview of the site, so sign-ups aren't being collected yet.`;
+});
+
+render();
+})();
+</script>

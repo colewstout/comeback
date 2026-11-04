@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Comeback Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<!-- Signed-out views -->
+<section id="authView" class="auth" hidden>
+  <div class="auth-card">
+    <a class="logo" href="/"><svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="var(--pine)" stroke-width="3" stroke-dasharray="52 18" stroke-linecap="round" transform="rotate(-30 13 13)"/><circle cx="21.5" cy="7" r="3" fill="var(--marigold)"/></svg>Comeback</a>
+    <form id="loginForm" class="stack">
+      <h1>Log in</h1>
+      <label class="field">Email<input id="li-email" type="email" autocomplete="email" required></label>
+      <label class="field">Password<input id="li-pw" type="password" autocomplete="current-password" required></label>
+      <button class="btn btn-primary" type="submit">Log in</button>
+      <p class="muted">New here? <a href="#signup">Start your free 30-day trial</a></p>
+    </form>
+    <form id="signupForm" class="stack" hidden>
+      <h1>Start your free trial</h1>
+      <p class="muted">30 days free. No card needed to start.</p>
+      <label class="field">Your name<input id="su-name" autocomplete="name"></label>
+      <label class="field">Business name<input id="su-biz" autocomplete="organization" required></label>
+      <label class="field">Type of business<select id="su-industry">
+        <option value="salon">Hair salon or barber</option><option value="groomer">Dog groomer</option><option value="detailer">Car detailer</option>
+        <option value="fitness">Fitness or yoga studio</option><option value="nails">Nail or lash studio</option><option value="cafe">Café or restaurant</option><option value="other">Something else</option>
+      </select></label>
+      <label class="field">Email<input id="su-email" type="email" autocomplete="email" required></label>
+      <label class="field">Password<input id="su-pw" type="password" autocomplete="new-password" minlength="10" required><small>At least 10 characters</small></label>
+      <button class="btn btn-primary" type="submit">Create account</button>
+      <p class="muted">Already have an account? <a href="#login">Log in</a></p>
+    </form>
+    <p class="error" id="authError" role="alert" hidden></p>
+  </div>
+</section>
+
+<!-- Signed-in app -->
+<div id="appView" hidden>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="logo" href="#overview"><svg width="24" height="24" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="var(--pine)" stroke-width="3" stroke-dasharray="52 18" stroke-linecap="round" transform="rotate(-30 13 13)"/><circle cx="21.5" cy="7" r="3" fill="var(--marigold)"/></svg>Comeback</a>
+      <nav class="tabs" aria-label="Sections">
+        <a href="#overview" data-tab="overview">Customers</a>
+        <a href="#import" data-tab="import">Upload sales</a>
+        <a href="#messages" data-tab="messages">Messages</a>
+        <a href="#settings" data-tab="settings">Settings</a>
+      </nav>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Log out</button>
+    </div>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+
+  <main class="wrap">
+    <!-- Overview -->
+    <section id="tab-overview" class="tab">
+      <div class="head">
+        <div><h1 id="bizName">Your business</h1><p class="muted" id="bizSub"></p></div>
+        <div class="row-gap">
+          <span class="pill" id="autopilotPill"></span>
+        </div>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="card" id="emptyState" hidden>
+        <h2>Upload your sales to get started</h2>
+        <p class="muted">Export your sales or appointments from Square, your booking app, or a spreadsheet. One row per purchase, with the customer's name, phone or email, the date, and the amount.</p>
+        <a class="btn btn-primary" href="#import">Upload sales</a>
+      </div>
+      <div class="card list" id="listCard" hidden>
+        <div class="toolbar"><div class="chips" id="chips" role="group" aria-label="Filter customers"></div></div>
+        <div id="rows"></div>
+      </div>
+    </section>
+
+    <!-- Import -->
+    <section id="tab-import" class="tab" hidden>
+      <div class="head"><div><h1>Upload sales</h1><p class="muted">Re-upload whenever you like. We only add purchases we haven't seen before, and new visits from customers in a win-back count as recovered revenue.</p></div></div>
+      <div class="card stack">
+        <div class="drop" id="drop">
+          <p><b>Drop a CSV file here</b> or</p>
+          <label class="btn btn-primary" for="csvFile">Choose file</label>
+          <input id="csvFile" type="file" accept=".csv,text/csv" class="sr">
+          <p class="muted small">Columns we look for: customer name (or first and last name), phone, email, date, amount, and optionally a text opt-in column.</p>
+        </div>
+        <label class="check"><input type="checkbox" id="consentAll"> Every customer in this file agreed to receive texts from my business.</label>
+        <p class="muted small">Only check this if it's true, for example if your checkout asks for texting permission. Customers without text permission get emails instead.</p>
+        <div id="importResult" aria-live="polite"></div>
+      </div>
+      <h2 class="sub">Past uploads</h2>
+      <div class="card" id="imports"></div>
+    </section>
+
+    <!-- Messages -->
+    <section id="tab-messages" class="tab" hidden>
+      <div class="head"><div><h1>Messages</h1><p class="muted">Everything sent to your customers, and their replies.</p></div></div>
+      <div class="card" id="msgList"></div>
+    </section>
+
+    <!-- Settings -->
+    <section id="tab-settings" class="tab" hidden>
+      <div class="head"><div><h1>Settings</h1></div></div>
+      <form class="card stack" id="settingsForm">
+        <h2>Win-back</h2>
+        <label class="check big"><input type="checkbox" id="s-autopilot"> <span><b>Autopilot</b><br><span class="muted">Start win-backs automatically for overdue customers. When this is off, you start each one yourself.</span></span></label>
+        <div class="grid2">
+          <label class="field">Discount in the 2nd and 3rd message (%)<input id="s-discount" type="number" min="0" max="50" step="1"></label>
+          <label class="field">Call a customer overdue after<select id="s-mult"><option value="1.25">1.25× their usual gap</option><option value="1.5">1.5× their usual gap</option><option value="2">2× their usual gap</option><option value="3">3× their usual gap</option></select></label>
+          <label class="field">Booking link (optional)<input id="s-booking" type="url" placeholder="https://"></label>
+          <label class="field">Replies to emails go to<input id="s-reply" type="email"></label>
+        </div>
+        <h2>Business</h2>
+        <div class="grid2">
+          <label class="field">Business name<input id="s-name" required></label>
+          <label class="field">Type of business<select id="s-industry"></select></label>
+          <label class="field">Time zone<select id="s-tz"></select></label>
+          <div class="grid2 tight">
+            <label class="field">Send from<select id="s-start"></select></label>
+            <label class="field">Until<select id="s-end"></select></label>
+          </div>
+          <label class="field full">Mailing address (required by law in marketing emails)<input id="s-address" placeholder="12 Main St, Springfield, IL 62701"></label>
+        </div>
+        <div class="row-gap"><button class="btn btn-primary" type="submit">Save settings</button><span id="settingsMsg" class="muted" aria-live="polite"></span></div>
+      </form>
+      <div class="card stack" id="billingCard"></div>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden><aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle"></aside></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

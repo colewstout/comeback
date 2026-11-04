@@ -1,0 +1,46 @@
+# One-click deploy on Render: New > Blueprint > pick this repo.
+# Creates the web app (which also runs the 15-minute message scheduler) and a Postgres database.
+databases:
+  - name: comeback-db
+    plan: basic-256mb
+    databaseName: comeback
+    user: comeback
+
+services:
+  - type: web
+    name: comeback
+    runtime: docker
+    rootDir: app
+    plan: starter # always-on; the free plan sleeps, which would pause the scheduler
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: comeback-db, property: connectionString }
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false # e.g. https://app.yourdomain.com
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_PRICE_STARTER
+        sync: false
+      - key: STRIPE_PRICE_GROWTH
+        sync: false
+      - key: STRIPE_PRICE_MULTI
+        sync: false

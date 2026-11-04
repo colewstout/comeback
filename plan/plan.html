@@ -1,0 +1,328 @@
+<title>Comeback Business Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single readable column with a sticky table of contents on wide screens. Same identity as the Comeback site. */
+:root{--paper:#F4F6F1;--surface:#FFFFFF;--sunk:#EAEEE7;--ink:#13221C;--muted:#5A6962;--line:#D9DFD6;--pine:#1E5B45;--pine-soft:#DCEBE3;--marigold:#E3A21A;--marigold-soft:#FBF0D6;--over:#C2461F;
+--display:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif;--body:"Figtree","Helvetica Neue",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--paper:#0E1512;--surface:#15201B;--sunk:#1B2822;--ink:#E6EEE9;--muted:#9AABA2;--line:#27362E;--pine:#62C497;--pine-soft:#1C3A2D;--marigold:#F0B84A;--marigold-soft:#3A2F14;--over:#F27D58;color-scheme:dark}}
+:root[data-theme="dark"]{--paper:#0E1512;--surface:#15201B;--sunk:#1B2822;--ink:#E6EEE9;--muted:#9AABA2;--line:#27362E;--pine:#62C497;--pine-soft:#1C3A2D;--marigold:#F0B84A;--marigold-soft:#3A2F14;--over:#F27D58;color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:16.5px/1.65 var(--body)}
+.page{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:48px 80px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:56px}
+aside.toc{position:sticky;top:24px;align-self:start;font-size:14px;display:flex;flex-direction:column;gap:6px}
+aside.toc b{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+aside.toc a{color:var(--muted);text-decoration:none}aside.toc a:hover{color:var(--pine)}
+@media (max-width:860px){.page{grid-template-columns:1fr;gap:24px}aside.toc{display:none}}
+main{min-width:0;max-width:72ch}
+h1,h2,h3{font-family:var(--display);line-height:1.12;text-wrap:balance;margin:0}
+h1{font-size:clamp(36px,5vw,54px);font-weight:800}
+h2{font-size:28px;font-weight:700;margin-top:56px;padding-top:20px;border-top:2px solid var(--ink)}
+h3{font-size:19px;margin-top:28px}
+p,ul,ol{margin:14px 0 0}li{margin-top:6px}
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.meta{color:var(--muted);margin-top:12px}
+a{color:var(--pine)}
+.callout{background:var(--pine-soft);border-radius:14px;padding:18px 20px;margin-top:20px}
+.warn{background:var(--marigold-soft)}
+.callout p:first-child{margin-top:0}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}
+.kpis div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.kpis b{display:block;font:800 26px/1.1 var(--display);color:var(--pine);font-variant-numeric:tabular-nums}
+.kpis span{font-size:13px;color:var(--muted)}
+@media (max-width:640px){.kpis{grid-template-columns:1fr 1fr}}
+.tbl{overflow-x:auto;margin-top:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tr.tot td{font-weight:700;background:var(--sunk)}
+.script{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--pine);border-radius:10px;padding:14px 16px;margin-top:14px;font-size:15.5px}
+.script b{font-family:var(--display)}
+.chart{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+.chart svg{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font:11px var(--mono)}
+.src{font-size:13px;color:var(--muted)}
+</style>
+
+<div class="page">
+<aside class="toc" aria-label="Contents">
+  <b>Contents</b>
+  <a href="#summary">Summary</a><a href="#customer">Customer and niche</a><a href="#product">Product</a><a href="#pricing">Pricing</a><a href="#economics">Unit economics</a><a href="#forecast">12-month forecast</a><a href="#gtm">Getting customers</a><a href="#scripts">Sales scripts</a><a href="#competition">Competition</a><a href="#tech">Tech and costs</a><a href="#legal">Legal and compliance</a><a href="#ninety">First 90 days</a><a href="#metrics">Metrics</a><a href="#risks">Risks</a>
+</aside>
+<main>
+  <span class="eyebrow">Business plan · Draft 1 · November 2026</span>
+  <h1>Comeback</h1>
+  <p class="meta">Automatic customer win-back for local businesses that don't have a marketing team. "Comeback" is a working name: check the trademark and the domain before you spend money on branding.</p>
+
+  <h2 id="summary">Summary</h2>
+  <p>Local service businesses lose regular customers quietly. Nobody notices that a client who came every five weeks hasn't been in for three months. Large businesses use CRM software to catch this. Small shops either don't have the tools, or they have a basic feature inside their POS that nobody set up.</p>
+  <p>Comeback takes a business's sales history, learns how often each customer usually buys, and flags anyone who is overdue. It then sends a three-step win-back sequence (check-in, discount, last call) by text or email, and reports each week how much money came back.</p>
+  <p>We charge $49–199 a month. The pitch is simple: <b>one returning customer pays for the month.</b></p>
+  <div class="kpis">
+    <div><b>$85</b><span>Target average revenue per customer per month</span></div>
+    <div><b>~89%</b><span>Gross margin after texting, email, hosting and card fees</span></div>
+    <div><b>127</b><span>Paying businesses by month 12 (base case)</span></div>
+    <div><b>$10.8k</b><span>Monthly recurring revenue at month 12</span></div>
+  </div>
+
+  <h2 id="customer">Customer and niche</h2>
+  <p>Your research made one thing clear: a general "win-back for everyone" tool gets squeezed by Square's free feature and by new AI startups. So we launch narrow and expand later.</p>
+  <h3>Launch niche: appointment-based personal services</h3>
+  <p>Start with <b>hair salons, barbers and dog groomers</b>. They have:</p>
+  <ul>
+    <li>A predictable rebooking rhythm (4–8 weeks), so "overdue" is easy to measure and easy to explain.</li>
+    <li>A big, documented problem: only about 35% of first-time salon clients come back.</li>
+    <li>Owners who do everything themselves and won't set up marketing software.</li>
+    <li>No patient health data, so no HIPAA issues. Med spas and dental come later, with legal advice.</li>
+  </ul>
+  <p>Pick whichever of the three your network reaches most easily, and make the website and messages speak only to that niche for the first 20 customers. The demo already supports switching wording by industry.</p>
+  <h3>Ideal first customer</h3>
+  <ul>
+    <li>Owner-operated, 1–3 locations, 2–15 staff.</li>
+    <li>500–3,000 past customers in their POS or booking app.</li>
+    <li>Not already paying for Podium, Birdeye or an agency.</li>
+    <li>Can export a customer or sales list to a spreadsheet (almost all can).</li>
+  </ul>
+  <h3>Expansion order</h3>
+  <ol>
+    <li>Salons, barbers, groomers (months 1–6)</li>
+    <li>Car detailers, fitness and yoga studios, nail and lash studios (months 6–12)</li>
+    <li>Cafés, restaurants and retail with loyalty lists (year 2)</li>
+    <li>Med spas, dental, chiropractic, after a HIPAA review (year 2+)</li>
+  </ol>
+
+  <h2 id="product">Product</h2>
+  <h3>What the first paid version must do</h3>
+  <ol>
+    <li><b>Import:</b> CSV upload from Square, Vagaro, Fresha, Booksy or a spreadsheet. One row per purchase: name, phone or email, date, amount.</li>
+    <li><b>Rhythm:</b> each customer's usual gap is the median time between their visits. First-time customers use the industry default. A customer is "due" at 1× their gap, "overdue" at 1.5× (adjustable), and "lapsed" at 3×.</li>
+    <li><b>Sequence:</b> Day 0 friendly check-in with no discount. Day 7 personal discount code. Day 21 last call. It stops the moment the customer comes back or replies STOP.</li>
+    <li><b>Sending:</b> text through Twilio and email through Resend or Postmark, inside quiet hours, at most one message a week per customer.</li>
+    <li><b>Attribution:</b> when the next upload shows a visit from a contacted customer, count it as recovered revenue. Discount code redemptions confirm it.</li>
+    <li><b>Monday report:</b> an email to the owner: "9 clients came back, $1,140 recovered."</li>
+    <li><b>Billing:</b> Stripe subscriptions with a 30-day free trial.</li>
+  </ol>
+  <p>Items 1–3 and the report already exist as a working front-end in the website demo. That's your sales tool today.</p>
+  <h3>Later, once people are paying</h3>
+  <ul>
+    <li>Direct Square sync through its API, so there are no more uploads. This is the biggest retention feature.</li>
+    <li>Booking app syncs (Vagaro, Fresha, Booksy, Mindbody) in the order your customers ask for them.</li>
+    <li>AI-written messages in the owner's voice, and two-way text replies routed to the owner's phone.</li>
+    <li>"First visit to second visit" sequence for new customers (the 35% problem).</li>
+    <li>Birthday and anniversary messages, review requests after a return visit.</li>
+  </ul>
+
+  <h2 id="pricing">Pricing</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Plan</th><th class="n">Price</th><th>For</th><th>Includes</th></tr></thead>
+    <tbody>
+      <tr><td>Starter</td><td class="n">$49/mo</td><td>Single shop testing it out</td><td>500 customers, email only, weekly report</td></tr>
+      <tr><td>Growth</td><td class="n">$99/mo</td><td>Most customers</td><td>2,500 customers, text and email, auto-send, discount tracking</td></tr>
+      <tr><td>Multi-location</td><td class="n">$199/mo</td><td>2–3 locations</td><td>10,000 customers, done-for-you copy, monthly call</td></tr>
+      <tr><td>Pay-as-you-recover</td><td class="n">$29 + 10%</td><td>Skeptical owners</td><td>Growth features; 10% of recovered revenue, capped at $199</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Founding offer</b> (first 25 businesses): free done-for-you setup and 50% off for three months, in exchange for a testimonial and a 20-minute feedback call each month.</p>
+  <p><b>Annual plans</b> at two months free once you have 20+ customers. Annual billing sharply reduces churn among small businesses.</p>
+
+  <h2 id="economics">Unit economics (Growth plan, per customer per month)</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th class="n">Cost</th><th>Assumption</th></tr></thead>
+    <tbody>
+      <tr><td>Text messages</td><td class="n">$4.50</td><td>~400 texts at ~$0.011 each including carrier fees</td></tr>
+      <tr><td>Phone number and registration</td><td class="n">$1.50</td><td>One toll-free or 10DLC number per business, plus spreading the one-time registration cost</td></tr>
+      <tr><td>Email</td><td class="n">$0.20</td><td>Transactional email provider, paid tier</td></tr>
+      <tr><td>Hosting and database</td><td class="n">$0.50</td><td>Shared across all customers</td></tr>
+      <tr><td>Card processing</td><td class="n">$3.17</td><td>Stripe 2.9% + $0.30 on $99</td></tr>
+      <tr class="tot"><td>Total</td><td class="n">≈ $9.87</td><td>≈ 90% gross margin at $99</td></tr>
+    </tbody>
+  </table></div>
+  <p class="src">Text and registration prices change often. Check Twilio's current US pricing before you set your plans.</p>
+  <div class="callout"><p><b>What it's worth to the customer.</b> A salon with 1,000 past clients typically has around 300 who are overdue. At an $80 visit, winning back 1 in 10 is $2,400 in the first month. Even at 1 in 20 it's $1,200 against a $99 bill. Use this math on every sales call, with their own numbers.</p></div>
+
+  <h2 id="forecast">12-month forecast (base case)</h2>
+  <p>Assumes $85 average revenue per customer, 4% of customers cancel each month, about $9 cost per customer, and $60 a month of fixed tools. It does not include your own salary.</p>
+  <div class="chart" aria-label="Monthly recurring revenue by month">
+    <svg viewBox="0 0 640 220" role="img" aria-label="MRR grows from $255 in month 1 to $10,795 in month 12">
+      <g stroke="var(--line)" stroke-width="1"><line x1="50" y1="20" x2="630" y2="20"/><line x1="50" y1="80" x2="630" y2="80"/><line x1="50" y1="140" x2="630" y2="140"/><line x1="50" y1="200" x2="630" y2="200"/></g>
+      <text x="44" y="24" text-anchor="end">$12k</text><text x="44" y="84" text-anchor="end">$8k</text><text x="44" y="144" text-anchor="end">$4k</text><text x="44" y="204" text-anchor="end">$0</text>
+      <g fill="var(--pine)">
+        <rect x="58" y="196.2" width="34" height="3.8"/><rect x="106" y="191.1" width="34" height="8.9"/><rect x="154" y="183.4" width="34" height="16.6"/><rect x="202" y="174.5" width="34" height="25.5"/><rect x="250" y="163" width="34" height="37"/><rect x="298" y="149" width="34" height="51"/><rect x="346" y="133.7" width="34" height="66.3"/><rect x="394" y="117.1" width="34" height="82.9"/><rect x="442" y="100.6" width="34" height="99.4"/><rect x="490" y="81.4" width="34" height="118.6"/><rect x="538" y="61" width="34" height="139"/>
+        <rect x="586" y="38.1" width="34" height="161.9" fill="var(--marigold)"/>
+      </g>
+      <text x="603" y="32" text-anchor="middle" style="fill:var(--ink);font-weight:500">$10.8k</text>
+      <g text-anchor="middle"><text x="75" y="216">M1</text><text x="219" y="216">M4</text><text x="363" y="216">M7</text><text x="507" y="216">M10</text><text x="603" y="216">M12</text></g>
+    </svg>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Month</th><th class="n">New</th><th class="n">Cancelled</th><th class="n">Paying</th><th class="n">MRR</th><th class="n">Costs</th><th class="n">Profit</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="n">3</td><td class="n">0</td><td class="n">3</td><td class="n">$255</td><td class="n">$87</td><td class="n">$168</td></tr>
+      <tr><td>2</td><td class="n">4</td><td class="n">0</td><td class="n">7</td><td class="n">$595</td><td class="n">$123</td><td class="n">$472</td></tr>
+      <tr><td>3</td><td class="n">6</td><td class="n">0</td><td class="n">13</td><td class="n">$1,105</td><td class="n">$177</td><td class="n">$928</td></tr>
+      <tr><td>4</td><td class="n">8</td><td class="n">1</td><td class="n">20</td><td class="n">$1,700</td><td class="n">$240</td><td class="n">$1,460</td></tr>
+      <tr><td>5</td><td class="n">10</td><td class="n">1</td><td class="n">29</td><td class="n">$2,465</td><td class="n">$321</td><td class="n">$2,144</td></tr>
+      <tr><td>6</td><td class="n">12</td><td class="n">1</td><td class="n">40</td><td class="n">$3,400</td><td class="n">$420</td><td class="n">$2,980</td></tr>
+      <tr><td>7</td><td class="n">14</td><td class="n">2</td><td class="n">52</td><td class="n">$4,420</td><td class="n">$528</td><td class="n">$3,892</td></tr>
+      <tr><td>8</td><td class="n">15</td><td class="n">2</td><td class="n">65</td><td class="n">$5,525</td><td class="n">$645</td><td class="n">$4,880</td></tr>
+      <tr><td>9</td><td class="n">16</td><td class="n">3</td><td class="n">78</td><td class="n">$6,630</td><td class="n">$762</td><td class="n">$5,868</td></tr>
+      <tr><td>10</td><td class="n">18</td><td class="n">3</td><td class="n">93</td><td class="n">$7,905</td><td class="n">$897</td><td class="n">$7,008</td></tr>
+      <tr><td>11</td><td class="n">20</td><td class="n">4</td><td class="n">109</td><td class="n">$9,265</td><td class="n">$1,041</td><td class="n">$8,224</td></tr>
+      <tr><td>12</td><td class="n">22</td><td class="n">4</td><td class="n">127</td><td class="n">$10,795</td><td class="n">$1,203</td><td class="n">$9,592</td></tr>
+      <tr class="tot"><td>Year 1</td><td class="n">148</td><td class="n">21</td><td class="n">127</td><td class="n">$54,060</td><td class="n">$6,444</td><td class="n">$47,616</td></tr>
+    </tbody>
+  </table></div>
+  <p>Founding-member discounts lower months 1–4 by roughly $1,500 in total. The biggest lever is new customers per month, which comes from referrals and a repeatable sales channel by month 4. If you only reach half the new-customer numbers, you end the year near $5k MRR, still a solid side business.</p>
+
+  <h2 id="gtm">Getting customers</h2>
+  <h3>Customers 1–10: your network, by hand</h3>
+  <ul>
+    <li>List every salon, barber, groomer or studio owner your parents, relatives and friends know. Ask for warm introductions, not cold calls.</li>
+    <li>Offer a <b>free "lost customer audit"</b>: they send a sales export, you run it through the demo and show them how many customers are overdue and how much money that is. This takes you 15 minutes and is the best sales tool you have.</li>
+    <li>Run the first win-backs by hand if you need to (copy the messages from the demo and send them from a Google Voice number or their own phone). Proving results matters more than automation at this stage.</li>
+  </ul>
+  <h3>Customers 10–50: local and repeatable</h3>
+  <ul>
+    <li><b>Walk-ins:</b> visit salons on Tuesday and Wednesday mornings (their slowest time) with a one-page printout of the audit offer.</li>
+    <li><b>Referrals:</b> one free month for both owners when a customer refers another business. Salon and groomer owners know each other.</li>
+    <li><b>Facebook groups</b> for salon owners, groomers and local business owners. Post case studies with real numbers, not ads.</li>
+    <li><b>Suppliers and educators:</b> beauty supply reps, groomer schools and barber academies talk to hundreds of owners. Offer them a referral fee.</li>
+  </ul>
+  <h3>50+: scale channels</h3>
+  <ul>
+    <li>Square App Marketplace listing once the Square sync exists.</li>
+    <li>Short videos showing the Monday report ("this groomer got $1,900 back last month").</li>
+    <li>Partnerships with booking-software resellers and small marketing agencies (white label).</li>
+  </ul>
+
+  <h2 id="scripts">Sales scripts</h2>
+  <div class="script"><b>Warm intro text</b><br>Hi [Name], I'm [your name], [mutual contact]'s [son/friend]. I built a tool that finds salon clients who've stopped coming in and brings them back with a text. Could I run a free check on your client list? It takes 15 minutes, and I'll show you how much money is sitting in clients who've gone quiet. No cost and nothing to install.</div>
+  <div class="script"><b>Discovery call questions</b> (don't pitch until the end)
+    <ol>
+      <li>About how many clients do you see in a month? How many are regulars?</li>
+      <li>When a regular stops coming in, how do you find out?</li>
+      <li>Do you do anything today to bring them back? How often does that actually happen?</li>
+      <li>What's an average visit worth?</li>
+      <li>What do you use for booking and payments? Could you export your client list?</li>
+      <li>Have you tried marketing tools before? What happened?</li>
+    </ol>
+  </div>
+  <div class="script"><b>The close, after showing the audit</b><br>You have [X] clients who are overdue, worth about [$Y] a month. If we bring back just 1 in 10, that's [$Z] a month, and the plan is $99. Founding members get setup done for them and half off for three months. Want me to turn it on this week? You approve every message before it goes out.</div>
+  <div class="script"><b>Common objections</b>
+    <ul>
+      <li><b>"Square already does this."</b> It has a basic version. Have you turned it on? (Usually no.) We set it up for you, learn each client's personal schedule, and show you the dollars every Monday.</li>
+      <li><b>"I don't want to spam my clients."</b> At most three friendly messages over three weeks, and it stops the moment they book.</li>
+      <li><b>"I can't afford another subscription."</b> Then start with Pay-as-you-recover: $29 a month plus 10% of what comes back.</li>
+    </ul>
+  </div>
+
+  <h2 id="competition">Competition and how we win</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Competitor</th><th>Their strength</th><th>Our angle</th></tr></thead>
+    <tbody>
+      <tr><td>Square Marketing, Clover</td><td>Free or cheap, already installed</td><td>One fixed rule and no setup help. We're done-for-you, per-customer timing, and dollars reported.</td></tr>
+      <tr><td>Vagaro, Boulevard, Mindbody add-ons</td><td>Built for salons and spas</td><td>Only inside their system. We work with any POS or spreadsheet.</td></tr>
+      <tr><td>Podium, Birdeye</td><td>Full suite of reviews and messaging</td><td>$300–600 a month. We do one thing at a quarter of the price.</td></tr>
+      <tr><td>Regulr AI, Revive Local</td><td>Same idea, venture funded</td><td>They're broad. We go deep on one niche and win on wording, service and local relationships.</td></tr>
+      <tr><td>Mailchimp, Klaviyo</td><td>Powerful</td><td>Built for online stores. Owners must design everything themselves.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Our moat early on is service, not software:</b> fast setup, messages written in the language of the niche, and a founder who answers the phone. Over time, data on which messages and discounts work best in each niche becomes a real advantage.</p>
+
+  <h2 id="tech">Tech stack and startup costs</h2>
+  <p>You can build and run the first version for well under $50 a month.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Need</th><th>Recommendation</th><th class="n">Cost to start</th></tr></thead>
+    <tbody>
+      <tr><td>Website and app</td><td>Next.js on Vercel (the demo code carries over)</td><td class="n">Free</td></tr>
+      <tr><td>Database and login</td><td>Supabase (Postgres plus authentication)</td><td class="n">Free</td></tr>
+      <tr><td>Scheduled sending</td><td>Supabase scheduled functions or Vercel Cron, run daily</td><td class="n">Free</td></tr>
+      <tr><td>Texting</td><td>Twilio, with a toll-free number verified per business to start</td><td class="n">~$20 to test</td></tr>
+      <tr><td>Email</td><td>Resend (free up to about 3,000 emails a month)</td><td class="n">Free</td></tr>
+      <tr><td>Billing</td><td>Stripe Billing with free trials</td><td class="n">Per transaction</td></tr>
+      <tr><td>Domain</td><td>A .com or .co for the brand</td><td class="n">~$12/yr</td></tr>
+      <tr><td>Business email</td><td>Google Workspace</td><td class="n">~$7/mo</td></tr>
+      <tr class="tot"><td>Total</td><td></td><td class="n">≈ $40 to launch</td></tr>
+    </tbody>
+  </table></div>
+  <p>Also budget for forming an LLC in your state (about $50–$500 depending on the state) before you take payments, and a separate business bank account.</p>
+  <h3>Data model, for when you build the backend</h3>
+  <ul>
+    <li><b>businesses:</b> name, industry, discount %, overdue threshold, sending hours, plan.</li>
+    <li><b>customers:</b> business, name, phone, email, text consent, email consent, opted out.</li>
+    <li><b>visits:</b> customer, date, amount, source (upload or sync).</li>
+    <li><b>sequences:</b> customer, started, current step, code, status (active, won, stopped).</li>
+    <li><b>messages:</b> sequence, step, channel, body, sent at, delivery status.</li>
+  </ul>
+  <p>A daily job recomputes every customer's rhythm, starts sequences for anyone newly overdue, sends due steps within quiet hours, and marks sequences "won" when a new visit appears.</p>
+
+  <h2 id="legal">Legal and compliance</h2>
+  <div class="callout warn">
+    <p><b>Texting is the main legal risk in this business. Get it right from day one.</b></p>
+    <ul>
+      <li><b>Consent (TCPA):</b> only text customers who agreed to receive texts from the business. A promotional text without consent can mean fines of $500–$1,500 per message. Give customers without text consent email only.</li>
+      <li><b>Carrier registration:</b> US carriers require business texting to be registered (toll-free verification or A2P 10DLC). Each client business generally needs its own registration. Plan setup time for it.</li>
+      <li><b>Opt-out:</b> include "Reply STOP to opt out" and honor it immediately. Respect quiet hours (no texts before 8am or after 9pm local time).</li>
+      <li><b>Email (CAN-SPAM):</b> include the business's physical address and an unsubscribe link.</li>
+      <li><b>Data:</b> a simple Terms of Service and Privacy Policy, plus a data processing clause saying the business owns its customer data and you only use it to provide the service.</li>
+      <li><b>Health businesses:</b> avoid med spas, dental and therapy until you get advice on HIPAA.</li>
+    </ul>
+    <p>An hour with a small-business lawyer before your first paid customer is money well spent. This section is a checklist, not legal advice.</p>
+  </div>
+
+  <h2 id="ninety">First 90 days</h2>
+  <h3>Weeks 1–2: validate</h3>
+  <ul>
+    <li>Choose the launch niche (salon, barber or groomer) based on who you can reach.</li>
+    <li>Book 10 conversations with owners using the discovery questions. Don't sell yet.</li>
+    <li>Run 5 free "lost customer audits" with the website demo.</li>
+    <li>Buy the domain, set up business email, and check the name is available.</li>
+  </ul>
+  <h3>Weeks 3–6: pilot by hand</h3>
+  <ul>
+    <li>Sign 3 pilot businesses on the founding offer, free for the first month.</li>
+    <li>Send their win-backs semi-manually using the demo's messages. Track every return in a spreadsheet.</li>
+    <li>Form the LLC and open a business bank account.</li>
+    <li>Start building the backend: login, CSV import, daily job, email sending.</li>
+  </ul>
+  <h3>Weeks 7–10: automate and charge</h3>
+  <ul>
+    <li>Add Twilio texting with opt-out handling, then Stripe billing.</li>
+    <li>Turn the pilots into paid customers. Collect written testimonials with real dollar numbers.</li>
+    <li>Ship the Monday report email.</li>
+  </ul>
+  <h3>Weeks 11–13: grow</h3>
+  <ul>
+    <li>Start the referral program. Do walk-ins at 20 local shops.</li>
+    <li>Publish 2 case studies on the website.</li>
+    <li>Goal: <b>10 paying businesses and $700+ MRR by day 90.</b></li>
+  </ul>
+
+  <h2 id="metrics">Metrics that matter</h2>
+  <ul>
+    <li><b>Recovered revenue per customer per month.</b> This is the product. Aim for at least 10× the subscription price.</li>
+    <li><b>Win-back rate:</b> share of contacted customers who return within 30 days. Expect 8–20%. Treat vendor claims of 25–30% as a best case.</li>
+    <li><b>Monthly churn:</b> under 4%. Anyone below 3× ROI is a churn risk; call them.</li>
+    <li><b>Time to first win-back:</b> under 14 days from signup.</li>
+    <li><b>Audit-to-paid conversion:</b> aim for 30%+.</li>
+    <li><b>Opt-out rate:</b> under 2% per message. Higher means the wording or frequency is wrong.</li>
+  </ul>
+
+  <h2 id="risks">Risks and how to handle them</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Square improves its free feature</td><td>Don't depend on Square. Work with any data source, own one niche, and sell service and results.</td></tr>
+      <tr><td>Funded AI startups go after the same customers</td><td>Go deep in one niche and in your local area where relationships matter. Move faster on customer feedback.</td></tr>
+      <tr><td>Owners cancel when results stall</td><td>Monday report with dollars, annual plans, and a check-in call for any account under 3× ROI.</td></tr>
+      <tr><td>Texting compliance problems</td><td>Consent tracking built in, registration per business, opt-out handling, quiet hours, email fallback.</td></tr>
+      <tr><td>Manual CSV uploads are a chore</td><td>Remind owners monthly, then build the Square sync first, since it's the most common POS among targets.</td></tr>
+      <tr><td>Founder time is limited</td><td>Founding offer capped at 25. Productize setup so it takes under 20 minutes.</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="src" style="margin-top:40px">Market figures come from the research in your earlier conversation: Boulevard and Meevo retention data, Simple Salon rebooking benchmarks, Statista (cited secondhand), and Square, Podium and Birdeye pricing pages. Forecast figures are assumptions for planning, not predictions.</p>
+</main>
+</div>
