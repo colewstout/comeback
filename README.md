@@ -7,4 +7,4 @@ Customer win-back for local businesses: it learns how often each customer usuall
 - `plan/`: the business plan.
 - `sample-customers.csv`: a small file for trying the upload.
 
-The repository and some internal names (the local database name, the encryption-key label) still say `comeback` from the original working name. They aren't visible to customers.
+A few internal names (the local database name and the encryption-key label) still say `comeback` from the original working name. They aren't visible to customers.
