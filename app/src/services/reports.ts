@@ -70,7 +70,7 @@ export async function weeklyReport(db: Queryable, b: Business, now: Date, appUrl
   const recovered = wins.reduce((s, w) => s + w.recovered_cents, 0);
   const subject = wins.length
     ? `${wins.length} customer${wins.length === 1 ? '' : 's'} came back this week: ${money(recovered)} recovered`
-    : `Your Comeback week: ${m!.n} win-back messages sent`;
+    : `Your week with One More Time: ${m!.n} win-back messages sent`;
   const lines = [
     `Here's your week at ${b.name}.`,
     '',
@@ -98,7 +98,7 @@ export async function sendWeeklyReports(db: Db, providers: Providers, appUrl: st
     if (!canSend(b, now)) continue;
     try {
       const r = await weeklyReport(db, b, now, appUrl);
-      await providers.email.send({ to: b.owner_email, fromName: 'Comeback', subject: r.subject, text: r.text });
+      await providers.email.send({ to: b.owner_email, fromName: 'One More Time', subject: r.subject, text: r.text });
       sent++;
     } catch (err) {
       log(`weekly report failed for ${b.id}: ${(err as Error).message}`);

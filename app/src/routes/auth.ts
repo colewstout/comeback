@@ -97,10 +97,10 @@ export async function authRoutes(app: FastifyInstance) {
     }
     // Don't wait for the email: a slower reply would reveal that the account exists.
     void providers.email.send({
-      to: email, fromName: 'Comeback', subject: 'Reset your Comeback password',
+      to: email, fromName: 'One More Time', subject: 'Reset your One More Time password',
       text: [
         `Hi${u.name ? ` ${u.name.split(' ')[0]}` : ''},`, '',
-        'Someone (hopefully you) asked to reset the password for your Comeback account. Use this link to choose a new one:', '',
+        'Someone (hopefully you) asked to reset the password for your One More Time account. Use this link to choose a new one:', '',
         link, '',
         `The link works once and expires in ${RESET_TTL_MINUTES} minutes. If you didn't ask for this, you can ignore this email; your password won't change.`,
       ].join('\n'),
