@@ -2,6 +2,8 @@
 
 The backend and owner dashboard for One More Time: it tracks how often each customer buys, flags the ones who are overdue, and runs a three-message win-back (check-in, discount, last call) by text or email. Then it counts who came back and how much they spent.
 
+Setup guides: [email (Resend)](../docs/email-setup-resend.md) · [texting (Twilio)](../docs/texting-setup-twilio.md) · [getting sales exports from Square, Jobber, DaySmart Pet, MoeGo and others](../docs/exports.md).
+
 ## What's in here
 
 | Part | Where | What it does |
@@ -74,6 +76,7 @@ Step-by-step guide with DNS records and troubleshooting: [`docs/email-setup-rese
 2. Set `RESEND_API_KEY` and `EMAIL_FROM` (for example `hello@mail.yourdomain.com`).
 
 ### Turn on texting (Twilio)
+Full guide, including verification, per-business numbers and testing: [`docs/texting-setup-twilio.md`](../docs/texting-setup-twilio.md). In short:
 1. Buy a toll-free number and complete **toll-free verification**, or register for A2P 10DLC. Carriers block unregistered business texting.
 2. Set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM_NUMBER`.
 3. In the number's settings, set **A message comes in** to `https://YOUR_APP_URL/webhooks/twilio/sms` (HTTP POST). This handles STOP and START and saves replies.

@@ -9,7 +9,7 @@ import { PLANS, planLimits } from '../lib/plans.js';
 import { getBusiness, publicBusiness, type Business } from '../services/businesses.js';
 import { loadCustomerStates } from '../services/customers.js';
 import { importCsv } from '../services/imports.js';
-import { chooseChannel, sendDueSteps, smsAllowedFor, startSequence, stopSequences } from '../services/sequences.js';
+import { chooseChannel, eligibleForSecondVisit, eligibleForWinback, sendDueSteps, smsAllowedFor, startSequence, stopSequences } from '../services/sequences.js';
 import { dashboard, weeklyReport } from '../services/reports.js';
 import { createCheckout, createPortal } from '../services/billing.js';
 
@@ -26,6 +26,7 @@ const businessPatch = z.object({
   reply_to_email: z.string().trim().email().nullable().or(z.literal('').transform(() => null)),
   postal_address: z.string().trim().max(300).nullable(),
   second_visit_enabled: z.boolean(),
+  setup_dismissed: z.boolean(),
   second_visit_discount_pct: z.number().int().min(0).max(50),
   message_templates: z.object({
     winback: z.array(z.string().max(1000).nullable()).length(3),
@@ -35,7 +36,7 @@ const businessPatch = z.object({
   message: 'Sending hours must start before they end.', path: ['send_window_end'],
 });
 
-const COLUMNS = ['name', 'industry', 'discount_pct', 'overdue_multiplier', 'timezone', 'send_window_start', 'send_window_end', 'autopilot', 'booking_url', 'reply_to_email', 'postal_address', 'second_visit_enabled', 'second_visit_discount_pct', 'message_templates'] as const;
+const COLUMNS = ['name', 'industry', 'discount_pct', 'overdue_multiplier', 'timezone', 'send_window_start', 'send_window_end', 'autopilot', 'booking_url', 'reply_to_email', 'postal_address', 'second_visit_enabled', 'second_visit_discount_pct', 'message_templates', 'setup_dismissed'] as const;
 
 /** Which steps carry the discount code, so the owner's wording must include {code}. */
 const CODE_STEPS: Record<SequenceKind, number[]> = { winback: [1, 2], second_visit: [0, 1] };
@@ -222,6 +223,42 @@ export async function apiRoutes(app: FastifyInstance) {
         WHERE customer_id = $1 AND business_id = $2 AND status = 'active'`,
       [id, req.business!.id, now()],
     );
+    return { ok: true };
+  });
+
+  // Guided setup: what's done, and who autopilot would contact if switched on now.
+  app.get('/setup', async (req) => {
+    const b = req.business!;
+    const states = await loadCustomerStates(db, b, now());
+    const smsOk = smsAllowedFor(b, providers);
+    const winback = eligibleForWinback(states, smsOk, now());
+    const second = b.second_visit_enabled ? eligibleForSecondVisit(states, b, smsOk) : [];
+    const byChannel = (list: typeof states) => list.reduce((acc, c) => { const ch = chooseChannel(c, smsOk); if (ch) acc[ch]++; return acc; }, { sms: 0, email: 0 });
+    const { rows: [sq] } = await db.query<{ status: string }>(`SELECT status FROM integrations WHERE business_id = $1 AND provider = 'square'`, [b.id]);
+    const steps = {
+      data: states.length > 0,
+      details: Boolean(b.postal_address),
+      messages: Boolean(b.messages_reviewed_at),
+      autopilot: b.autopilot,
+    };
+    return {
+      steps,
+      done: Object.values(steps).filter(Boolean).length,
+      total: Object.keys(steps).length,
+      complete: Object.values(steps).every(Boolean),
+      dismissed: b.setup_dismissed,
+      customers: states.length,
+      squareConnected: sq?.status === 'connected',
+      autopilotPreview: {
+        winback: { count: winback.length, ...byChannel(winback) },
+        secondVisit: { count: second.length, ...byChannel(second) },
+        sendWindow: { start: b.send_window_start, end: b.send_window_end, timezone: b.timezone },
+      },
+    };
+  });
+
+  app.post('/setup/messages-reviewed', async (req) => {
+    await db.query(`UPDATE businesses SET messages_reviewed_at = $2 WHERE id = $1`, [req.business!.id, now()]);
     return { ok: true };
   });
 

@@ -83,6 +83,7 @@
           <span class="pill" id="autopilotPill"></span>
         </div>
       </div>
+      <div id="setupCard"></div>
       <div class="tiles" id="tiles"></div>
       <div class="card" id="emptyState" hidden>
         <h2>Upload your sales to get started</h2>
@@ -99,6 +100,17 @@
     <section id="tab-import" class="tab" hidden>
       <div class="head"><div><h1>Upload sales</h1><p class="muted">Re-upload whenever you like. We only add purchases we haven't seen before, and new visits from customers in a win-back count as recovered revenue.</p></div></div>
       <div class="card sq-hint" id="squareHint" hidden></div>
+      <div class="card stack" id="exportHelp">
+        <label class="field">What do you use for bookings or payments?
+          <select id="exportSystem">
+            <option value="">Choose your software…</option>
+            <option value="square">Square</option><option value="moego">MoeGo</option><option value="gingr">Gingr</option>
+            <option value="daysmart">DaySmart Pet</option><option value="jobber">Jobber</option><option value="urable">Urable</option>
+            <option value="other">Something else, or a spreadsheet</option>
+          </select>
+        </label>
+        <div id="exportSteps" class="steps-help" aria-live="polite"></div>
+      </div>
       <div class="card stack">
         <div class="drop" id="drop">
           <p><b>Drop a CSV file here</b> or</p>
@@ -122,7 +134,7 @@
 
     <!-- Settings -->
     <section id="tab-settings" class="tab" hidden>
-      <div class="head"><div><h1>Settings</h1></div></div>
+      <div class="head"><div><h1>Settings</h1></div><button class="btn btn-ghost btn-sm" type="button" id="showSetup">Show setup checklist</button></div>
       <div class="card stack" id="squareCard"></div>
       <form class="card stack" id="settingsForm">
         <h2>Win-back</h2>

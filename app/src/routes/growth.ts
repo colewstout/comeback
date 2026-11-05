@@ -58,7 +58,7 @@ export async function growthRoutes(app: FastifyInstance) {
       const [{ rows: waitlist }, { rows: businesses }] = await Promise.all([
         db.query(`SELECT email, name, business_name, business_type, phone, message, created_at FROM waitlist ORDER BY created_at DESC LIMIT 500`),
         db.query(
-          `SELECT b.id, b.name, b.industry, b.plan, b.plan_status, b.trial_ends_at, b.autopilot, b.created_at, u.email AS owner_email,
+          `SELECT b.id, b.name, b.industry, b.plan, b.plan_status, b.trial_ends_at, b.autopilot, b.created_at, b.sms_from, u.email AS owner_email,
                   (SELECT count(*) FROM customers c WHERE c.business_id = b.id) AS customers,
                   (SELECT count(*) FROM messages m WHERE m.business_id = b.id AND m.direction = 'out' AND m.status = 'sent' AND m.created_at > now() - interval '30 days') AS messages_30d,
                   (SELECT count(*) FROM sequences s WHERE s.business_id = b.id AND s.status = 'won' AND s.ended_at > now() - interval '30 days') AS wins_30d,
@@ -68,6 +68,22 @@ export async function growthRoutes(app: FastifyInstance) {
       ]);
       const mrr = businesses.filter((b) => b.plan_status === 'active').reduce((s, b) => s + (({ starter: 49, growth: 99, multi: 199 } as Record<string, number>)[b.plan] ?? 0), 0);
       return { waitlist, businesses, totals: { waitlist: waitlist.length, businesses: businesses.length, paying: businesses.filter((b) => b.plan_status === 'active').length, mrr } };
+    });
+
+    // Each business texts from its own verified number (carriers expect one sender per business).
+    admin.patch('/api/admin/businesses/:id', async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const { sms_from } = z.object({ sms_from: z.string().trim().max(30).nullable() }).parse(req.body);
+      const number = sms_from ? normalizePhone(sms_from) : null;
+      if (sms_from && !number) return reply.code(400).send({ error: 'That number doesn’t look right. Use the full number, like +1 800 555 0123.' });
+      try {
+        const { rowCount } = await db.query('UPDATE businesses SET sms_from = $2 WHERE id = $1', [id, number]);
+        if (!rowCount) return reply.code(404).send({ error: 'Business not found.' });
+      } catch (err) {
+        if ((err as { code?: string }).code === '23505') return reply.code(409).send({ error: 'Another business already uses that number. Each business needs its own.' });
+        throw err;
+      }
+      return { ok: true, sms_from: number };
     });
   });
 }

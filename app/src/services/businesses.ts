@@ -9,6 +9,8 @@ export interface Business {
   second_visit_enabled: boolean;
   second_visit_discount_pct: number;
   message_templates: import('../lib/templates.js').MessageTemplates;
+  messages_reviewed_at: Date | null;
+  setup_dismissed: boolean;
   overdue_multiplier: number;
   timezone: string;
   send_window_start: number;

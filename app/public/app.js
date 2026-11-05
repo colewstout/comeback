@@ -156,6 +156,7 @@
     $('autopilotPill').className = `pill ${b.autopilot ? 'p-won' : ''}`;
     $('autopilotPill').textContent = b.autopilot ? 'Autopilot on' : 'Autopilot off';
     const [{ dashboard: d }, list] = await Promise.all([api('GET', '/api/dashboard'), api('GET', `/api/customers?status=${S.filter}`)]);
+    renderSetup().catch(() => {});
     S.customers = list;
     $('bizSub').textContent = d.customers ? `${d.customers.toLocaleString()} customers tracked` : 'No customers yet';
     $('tiles').innerHTML = `
@@ -164,7 +165,7 @@
       <div class="tile bad"><span>Revenue slipping</span><b>${money(d.slippingMonthlyCents)}<small>/mo</small></b><small>From overdue customers</small></div>
       <div class="tile"><span>Win-backs running</span><b>${d.inProgress}</b><small>${d.last30.messagesSent} messages sent in 30 days</small></div>
       <div class="tile good"><span>Recovered (30 days)</span><b>${money(d.last30.recoveredCents)}</b><small>${d.last30.wins} came back · ${money(d.allTime.recoveredCents)} all time</small></div>`;
-    $('emptyState').hidden = d.customers > 0;
+    $('emptyState').hidden = d.customers > 0 || !S.setupHidden;
     $('listCard').hidden = d.customers === 0;
     const F = [['attention', 'Needs attention', (c) => (c.due || 0) + (c.overdue || 0) + (c.lapsed || 0)], ['overdue', 'Overdue'], ['lapsed', 'Lapsed'], ['due', 'Due now'], ['in_progress', 'Win-back running'], ['won', 'Came back'], ['ok', 'On track'], ['all', 'All', () => list.total]];
     $('chips').innerHTML = F.map(([k, lab, fn]) => `<button class="chip" type="button" data-f="${k}" aria-pressed="${S.filter === k}">${lab}<span class="c">${fn ? fn(list.counts) : list.counts[k] || 0}</span></button>`).join('');
@@ -287,7 +288,10 @@
     try {
       const csv = await file.text();
       const r = await api('POST', '/api/imports', { filename: file.name, csv, smsConsentAll: $('consentAll').checked });
-      out.innerHTML = `<div class="result"><b>Done.</b> ${r.visitsAdded.toLocaleString()} new purchases, ${r.customersCreated.toLocaleString()} new customers, ${r.customersUpdated.toLocaleString()} existing customers updated.${r.duplicateRows ? ` ${r.duplicateRows.toLocaleString()} rows were already uploaded and were skipped.` : ''}
+      const summary = r.format === 'customer_summary';
+      out.innerHTML = `<div class="result"><b>Done.</b> ${summary
+          ? `Read ${r.rowsTotal.toLocaleString()} customers from a client list and estimated their visit rhythm from first visit, last visit and visit count.`
+          : `${r.visitsAdded.toLocaleString()} new purchases.`} ${r.customersCreated.toLocaleString()} new customers, ${r.customersUpdated.toLocaleString()} existing customers updated.${r.duplicateRows ? ` ${r.duplicateRows.toLocaleString()} rows were already uploaded and were skipped.` : ''}${r.excludedByStatus ? ` ${r.excludedByStatus.toLocaleString()} cancelled, no-show or refunded rows were left out.` : ''}
         ${r.skipped.length ? `<br><span class="small">${r.skipped.length} row(s) couldn't be read, for example line ${r.skipped[0].line}: ${esc(r.skipped[0].reason)}.</span>` : ''}
         <br><span class="small">Columns used: ${Object.entries(r.columns).filter(([, v]) => v).map(([k, v]) => `${k} = “${esc(v)}”`).join(', ')}</span>
         <br><a href="#overview">See who's overdue →</a></div>`;
@@ -299,6 +303,134 @@
   ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('on'); }));
   ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('on'); }));
   drop.addEventListener('drop', (e) => uploadFile(e.dataTransfer.files[0]));
+
+  $('adminBody').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sms]'); if (!b) return;
+    const cell = b.parentElement;
+    cell.innerHTML = `<form class="stack" data-smsform="${b.dataset.sms}" style="gap:6px"><input class="field-input" name="n" value="${esc(b.dataset.current)}" placeholder="+1 800 555 0123" aria-label="Texting number" style="font:14px var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);min-width:150px"><div class="row-gap"><button class="btn btn-primary btn-sm" type="submit">Save</button><span class="muted small"></span></div></form>`;
+    cell.querySelector('input').focus();
+  });
+  $('adminBody').addEventListener('submit', async (e) => {
+    const f = e.target.closest('[data-smsform]'); if (!f) return;
+    e.preventDefault();
+    try { await api('PATCH', `/api/admin/businesses/${f.dataset.smsform}`, { sms_from: f.n.value.trim() || null }); toast('Texting number saved.'); renderAdmin(); }
+    catch (err) { f.querySelector('.muted').textContent = err.message; }
+  });
+
+  // ---------- guided setup
+  const hourName = (h) => h === 0 || h === 24 ? 'midnight' : h === 12 ? 'noon' : h < 12 ? `${h}am` : `${h - 12}pm`;
+  async function renderSetup() {
+    const st = await api('GET', '/api/setup');
+    S.setupHidden = st.dismissed || (st.complete && !S.forceSetup);
+    const card = $('setupCard');
+    if (S.setupHidden) { card.innerHTML = ''; $('emptyState').hidden = st.customers > 0; return; }
+    $('emptyState').hidden = true;
+    const b = S.me.business, p = st.autopilotPreview;
+    const icon = (done) => `<span class="sicon ${done ? 'done' : ''}" aria-hidden="true">${done ? '✓' : ''}</span>`;
+    const people = (n) => `${n} customer${n === 1 ? '' : 's'}`;
+    const how = (x) => [x.sms ? `${x.sms} by text` : '', x.email ? `${x.email} by email` : ''].filter(Boolean).join(', ');
+    const firstOpen = ['data', 'details', 'messages', 'autopilot'].find((k) => !st.steps[k]);
+    const step = (key, title, doneText, body) => `
+      <details class="sstep ${st.steps[key] ? 'is-done' : ''}" ${key === firstOpen ? 'open' : ''}>
+        <summary>${icon(st.steps[key])}<span><b>${title}</b>${st.steps[key] ? `<span class="muted small"> · ${doneText}</span>` : ''}</span></summary>
+        <div class="sbody">${body}</div>
+      </details>`;
+    card.innerHTML = `
+      <section class="card setup" aria-labelledby="setupTitle">
+        <div class="row-gap" style="justify-content:space-between">
+          <div><h2 id="setupTitle">Get set up</h2><p class="muted small">${st.done} of ${st.total} done. Most owners finish in about 10 minutes.</p></div>
+          <button class="btn btn-ghost btn-sm" type="button" id="setupHide">${st.complete ? 'Done' : 'Hide this'}</button>
+        </div>
+        <div class="sbar"><span style="width:${(st.done / st.total) * 100}%"></span></div>
+        ${step('data', 'Bring in your sales history', `${st.customers.toLocaleString()} customers`, `
+          <p>We need your past visits to learn how often each customer usually comes in.</p>
+          <div class="row-gap">${S.me.capabilities.square ? (st.squareConnected ? '<span class="pill p-won">Square connected</span>' : '<a class="btn btn-primary btn-sm" href="/integrations/square/connect">Connect Square</a>') : ''}
+          <a class="btn ${S.me.capabilities.square ? 'btn-ghost' : 'btn-primary'} btn-sm" href="#import">Upload a file</a></div>`)}
+        ${step('details', 'Add your business details', 'saved', `
+          <p>Your mailing address goes at the bottom of every email (the law requires it). A booking link lets customers book in one tap.</p>
+          <div class="grid2">
+            <label class="field">Mailing address<input id="su-address" value="${esc(b.postal_address || '')}" placeholder="12 Main St, Dallas, TX 75230"></label>
+            <label class="field">Booking link (optional)<input id="su-booking" type="url" value="${esc(b.booking_url || '')}" placeholder="https://"></label>
+          </div>
+          <div class="row-gap"><button class="btn btn-primary btn-sm" type="button" id="suSaveDetails">Save details</button><span class="muted small" id="suDetailsMsg" aria-live="polite"></span></div>`)}
+        ${step('messages', 'Review your messages', 'looks good', `
+          <p>Here's what an overdue customer named Dana would get. Discount: ${b.discount_pct}%.</p>
+          <div id="suPreviews" class="stack"><p class="muted small">Loading…</p></div>
+          <div class="row-gap"><button class="btn btn-primary btn-sm" type="button" id="suLooksGood">Looks good</button><a class="btn btn-ghost btn-sm" href="#settings">Change wording or discount</a></div>`)}
+        ${step('autopilot', 'Turn on autopilot', 'on', !st.steps.data ? '<p class="muted">Bring in your sales first, so we can show you who would be contacted.</p>' : `
+          <p>If you turn it on now:</p>
+          <ul>
+            <li><b>${people(p.winback.count)}</b> who are overdue would get a friendly check-in${p.winback.count ? ` (${how(p.winback)})` : ''}.</li>
+            ${b.second_visit_enabled ? (p.secondVisit.count ? `<li><b>${people(p.secondVisit.count)}</b> who visited once would get a thank-you offer (${how(p.secondVisit)}).</li>` : '<li>No first-time customers are due a thank-you offer yet. They’ll get one automatically when they are.</li>') : ''}
+            <li>Messages only go out between ${hourName(p.sendWindow.start)} and ${hourName(p.sendWindow.end)} (${esc(p.sendWindow.timezone.replace('_', ' '))}), at most one a week per person, and stop when they come back.</li>
+          </ul>
+          ${!st.steps.details ? '<p class="error small">Add your mailing address first. Emails can’t go out without it.</p>' : ''}
+          <div class="row-gap"><button class="btn btn-primary btn-sm" type="button" id="suAutopilot" ${!st.steps.details ? 'disabled' : ''}>Turn on autopilot</button><span class="muted small">You can turn it off any time in Settings.</span></div>`)}
+      </section>`;
+    if (!st.steps.messages) loadSetupPreviews();
+  }
+  async function loadSetupPreviews() {
+    const box = $('suPreviews'); if (!box) return;
+    const t = S.me.templates, custom = S.me.business.message_templates || {};
+    try {
+      const items = await Promise.all(t.steps.winback.map((st, i) => api('POST', '/api/templates/preview', { kind: 'winback', step: i, text: (custom.winback && custom.winback[i]) || t.defaults.winback[i] })
+        .then((r) => `<div class="step"><h3><span>${esc(st.name)}</span><span class="muted small">Day ${st.day}</span></h3>${esc(r.body)}</div>`)));
+      box.innerHTML = items.join('');
+    } catch (err) { box.innerHTML = `<p class="error small">${esc(err.message)}</p>`; }
+  }
+  $('setupCard').addEventListener('click', async (e) => {
+    const id = e.target.id; if (!['setupHide', 'suSaveDetails', 'suLooksGood', 'suAutopilot'].includes(id)) return;
+    try {
+      if (id === 'setupHide') { S.forceSetup = false; await api('PATCH', '/api/business', { setup_dismissed: true }); toast('Hidden. You can bring the checklist back any time from Settings.'); }
+      if (id === 'suSaveDetails') {
+        await api('PATCH', '/api/business', { postal_address: $('su-address').value.trim() || null, booking_url: $('su-booking').value.trim() });
+        toast('Details saved.');
+      }
+      if (id === 'suLooksGood') { await api('POST', '/api/setup/messages-reviewed'); toast('Great. Those are the messages customers will get.'); }
+      if (id === 'suAutopilot') { e.target.disabled = true; await api('PATCH', '/api/business', { autopilot: true }); toast('Autopilot is on. First messages go out within the hour, inside your sending hours.'); }
+      S.me = await api('GET', '/api/me');
+      await renderOverview();
+    } catch (err) {
+      if (id === 'suSaveDetails') $('suDetailsMsg').textContent = err.message; else toast(err.message);
+      if (id === 'suAutopilot') e.target.disabled = false;
+    }
+  });
+
+  $('showSetup').addEventListener('click', async () => {
+    try { await api('PATCH', '/api/business', { setup_dismissed: false }); S.me = await api('GET', '/api/me'); S.forceSetup = true; location.hash = '#overview'; }
+    catch (err) { toast(err.message); }
+  });
+
+  // ---------- "where's my export?" help
+  const ASK_SUPPORT = (sys) => `<p>We couldn't confirm ${sys}'s menus, and they change between versions. The quickest route is to ask ${sys} support for:</p>
+    <blockquote>"A CSV export of our appointment (or invoice) history for the last 12 months, with the client's name, phone, email, the date, the amount, and the appointment status."</blockquote>
+    <p>A client list works too if it has <b>last visit</b>, <b>first visit</b> and <b>number of visits</b> columns. We'll estimate each client's rhythm from those.</p>`;
+  const EXPORT_HELP = {
+    square: `<p><b>Best: connect Square</b> (above). Your sales come in automatically every hour and you never upload again.</p>
+      <p>Or upload a file:</p><ol>
+        <li>In your Square Dashboard, open <b>Transactions</b>, choose the last 12 months, and click <b>Export → Transactions CSV</b>.</li>
+        <li>Upload it here. Customer names only appear on sales where a customer was attached at checkout.</li></ol>
+      <p class="muted small">Square's customer list export (Customers → Import/Export → Export customers) also works: it has first visit, last visit and visit counts, which we use to estimate each customer's rhythm.</p>`,
+    jobber: `<ol><li>In Jobber, go to <b>Insights → Reports</b> and open the <b>Invoice report</b> (under Financial reports).</li>
+      <li>Set the date range to the last 12 months and click <b>Export to CSV</b>. Jobber emails you the file.</li>
+      <li>Upload it here. We read the client name, issued date and total, and skip drafts and voided invoices.</li></ol>
+      <p class="muted small">Jobber's client export (Clients → More actions → Export clients) has contact details but no visit dates, so use the invoice report.</p>`,
+    daysmart: `<ol><li>In DaySmart Pet, open the <b>Reports</b> tab and run the <b>Appointment Report</b> for the last 12 months.</li>
+      <li>It exports to Excel. Open it and choose <b>File → Save As → CSV</b> (or in Google Sheets, <b>File → Download → CSV</b>).</li>
+      <li>Upload the CSV here. Cancelled and no-show appointments are skipped automatically.</li></ol>
+      <p class="muted small">Very large reports can time out. If that happens, run a few months at a time and upload each file; we skip anything already uploaded.</p>`,
+    moego: `<ol><li>In MoeGo, open <b>Reports</b> and export an appointment or sales report for the last 12 months.</li>
+      <li>Choose <b>CSV</b> (or Excel, then save it as CSV). Avoid PDF.</li>
+      <li>Upload it here. Cancelled and no-show appointments are skipped automatically.</li></ol>
+      <p class="muted small">Can't find it? Ask MoeGo support for "appointment history as CSV with client name, phone, email, date, total and status."</p>`,
+    gingr: ASK_SUPPORT('Gingr'),
+    urable: ASK_SUPPORT('Urable'),
+    other: `<p>Any spreadsheet works if it has <b>one row per visit or purchase</b> with:</p>
+      <ul><li><b>Customer:</b> name (or first and last name), plus phone and/or email if you have them</li><li><b>Date</b> of the visit</li><li><b>Amount</b> (optional, but needed to show money recovered)</li>
+      <li>Optional: a <b>status</b> column (cancelled and no-show rows are skipped) and a <b>text OK</b> column for customers who agreed to texts</li></ul>
+      <p>Or a client list with <b>last visit</b>, <b>first visit</b> and <b>number of visits</b>. Excel files need to be saved as CSV first.</p>`,
+  };
+  $('exportSystem').addEventListener('change', (e) => { $('exportSteps').innerHTML = EXPORT_HELP[e.target.value] || ''; });
 
   async function renderImports() {
     const [{ imports }, { square }] = await Promise.all([api('GET', '/api/imports'), api('GET', '/api/integrations')]);
@@ -560,8 +692,8 @@
         ${o.waitlist.map((w) => `<tr><td>${esc(w.business_name)}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td><td>${esc(w.phone || '')}</td><td>${esc(w.business_type)}</td><td>${esc(w.message)}</td><td>${when(w.created_at)}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">No sign-ups yet. They appear here when someone fills in the form on the website.</p>'}</div>
       <h2 class="sub">Businesses</h2>
-      <div class="card">${o.businesses.length ? `<div class="tbl"><table><thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th class="n">Customers</th><th class="n">Messages (30d)</th><th class="n">Won back (30d)</th><th>Square</th><th>Joined</th></tr></thead><tbody>
-        ${o.businesses.map((b) => `<tr><td>${esc(b.name)}<br><span class="muted small">${esc(S.me.industries[b.industry] || b.industry)}${b.autopilot ? ' · autopilot' : ''}</span></td><td>${esc(b.owner_email)}</td><td>${esc(b.plan)} · ${esc(b.plan_status)}</td><td class="n">${b.customers}</td><td class="n">${b.messages_30d}</td><td class="n">${b.wins_30d} · ${money(b.recovered_30d)}</td><td>${esc(b.square || '—')}</td><td>${when(b.created_at)}</td></tr>`).join('')}
+      <div class="card">${o.businesses.length ? `<div class="tbl"><table><thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th class="n">Customers</th><th class="n">Messages (30d)</th><th class="n">Won back (30d)</th><th>Square</th><th>Texting number</th><th>Joined</th></tr></thead><tbody>
+        ${o.businesses.map((b) => `<tr><td>${esc(b.name)}<br><span class="muted small">${esc(S.me.industries[b.industry] || b.industry)}${b.autopilot ? ' · autopilot' : ''}</span></td><td>${esc(b.owner_email)}</td><td>${esc(b.plan)} · ${esc(b.plan_status)}</td><td class="n">${b.customers}</td><td class="n">${b.messages_30d}</td><td class="n">${b.wins_30d} · ${money(b.recovered_30d)}</td><td>${esc(b.square || '—')}</td><td><span class="muted small">${esc(b.sms_from || 'none')}</span><br><button class="btn btn-ghost btn-sm" type="button" data-sms="${b.id}" data-current="${esc(b.sms_from || '')}">Set number</button></td><td>${when(b.created_at)}</td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">No businesses yet.</p>'}</div>`;
   }
 

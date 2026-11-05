@@ -6,6 +6,9 @@ export interface SendResult {
 
 export interface SmsProvider {
   name: string;
+  /** True when every message needs a real sending number (the business's own, or this default). */
+  requiresSender?: boolean;
+  defaultFrom?: string;
   send(msg: { to: string; from?: string | null; body: string }): Promise<SendResult>;
 }
 
@@ -30,6 +33,8 @@ export interface Providers {
 export function twilioSms(accountSid: string, authToken: string, defaultFrom: string | undefined): SmsProvider {
   return {
     name: 'twilio',
+    requiresSender: true,
+    defaultFrom,
     async send({ to, from, body }) {
       const sender = from || defaultFrom;
       if (!sender) throw new Error('No sending number. Set TWILIO_FROM_NUMBER or the business sms_from number.');
