@@ -52,3 +52,5 @@ services:
         value: production
       - key: TOKEN_ENCRYPTION_KEY
         generateValue: true
+      - key: ADMIN_EMAILS
+        sync: false # your email, to see the Admin tab

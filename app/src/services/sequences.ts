@@ -3,7 +3,7 @@ import type { Providers } from '../providers/index.js';
 import { addDays, inSendWindow, localDate } from '../lib/dates.js';
 import { canSend, planLimits } from '../lib/plans.js';
 import { signToken } from '../lib/security.js';
-import { baseDiscountCode, CODE_VALID_DAYS, renderMessage, STEP_OFFSETS_DAYS } from '../lib/templates.js';
+import { baseDiscountCode, industry, renderMessage, SEQUENCE_KINDS, type SequenceKind } from '../lib/templates.js';
 import type { Business } from './businesses.js';
 import { loadCustomerStates, type CustomerState } from './customers.js';
 
@@ -52,13 +52,14 @@ async function uniqueCode(db: Queryable, businessId: string, base: string): Prom
 }
 
 /** Start a win-back for one customer. Returns null if one is already running. */
-export async function startSequence(db: Queryable, b: Business, customer: { id: string; name: string }, now: Date) {
-  const code = await uniqueCode(db, b.id, baseDiscountCode(customer.name, b.discount_pct));
+export async function startSequence(db: Queryable, b: Business, customer: { id: string; name: string }, now: Date, kind: SequenceKind = 'winback') {
+  const pct = kind === 'second_visit' ? b.second_visit_discount_pct : b.discount_pct;
+  const code = await uniqueCode(db, b.id, baseDiscountCode(customer.name, pct));
   try {
     const { rows } = await db.query<{ id: string; discount_code: string }>(
-      `INSERT INTO sequences (business_id, customer_id, started_at, next_step_at, discount_code, discount_pct)
-       VALUES ($1, $2, $3, $3, $4, $5) RETURNING id, discount_code`,
-      [b.id, customer.id, now, code, b.discount_pct],
+      `INSERT INTO sequences (business_id, customer_id, started_at, next_step_at, discount_code, discount_pct, kind)
+       VALUES ($1, $2, $3, $3, $4, $5, $6) RETURNING id, discount_code`,
+      [b.id, customer.id, now, code, pct, kind],
     );
     return rows[0]!;
   } catch (err) {
@@ -108,8 +109,24 @@ export function eligibleForWinback(states: CustomerState[], smsAllowed: boolean,
   });
 }
 
+/**
+ * First-time customers who haven't come back yet and are approaching the usual gap for this
+ * kind of business: thank them with an offer before they drift away. Customers who've been
+ * gone much longer are left to the regular win-back.
+ */
+export function eligibleForSecondVisit(states: CustomerState[], b: Pick<Business, 'industry'>, smsAllowed: boolean): CustomerState[] {
+  const gap = industry(b.industry).defaultIntervalDays;
+  return states.filter((c) => {
+    if (!c.rhythm || c.rhythm.learned) return false; // only customers with a single visit date
+    if (c.sequence) return false; // never contacted before
+    const d = c.rhythm.daysSince;
+    if (d < Math.round(gap * 0.75) || d > Math.round(gap * 1.5)) return false;
+    return chooseChannel(c, smsAllowed) !== null;
+  });
+}
+
 interface DueRow {
-  id: string; customer_id: string; steps_sent: number; started_at: Date; discount_code: string; discount_pct: number;
+  id: string; customer_id: string; steps_sent: number; started_at: Date; discount_code: string; discount_pct: number; kind: SequenceKind;
 }
 
 export interface SendSummary { sent: number; failed: number; stopped: number; completed: number; outsideWindow: boolean }
@@ -122,7 +139,7 @@ export async function sendDueSteps(deps: EngineDeps, b: Business & { owner_email
   }
   const { db, providers } = deps;
   const { rows: due } = await db.query<DueRow>(
-    `SELECT id, customer_id, steps_sent, started_at, discount_code, discount_pct
+    `SELECT id, customer_id, steps_sent, started_at, discount_code, discount_pct, kind
        FROM sequences WHERE business_id = $1 AND status = 'active' AND next_step_at <= $2
       ORDER BY next_step_at LIMIT 500`,
     [b.id, now],
@@ -135,7 +152,8 @@ export async function sendDueSteps(deps: EngineDeps, b: Business & { owner_email
   for (const s of due) {
     const c = byId.get(s.customer_id);
     const step = s.steps_sent;
-    if (!c || step >= STEP_OFFSETS_DAYS.length) {
+    const plan = SEQUENCE_KINDS[s.kind] ?? SEQUENCE_KINDS.winback;
+    if (!c || step >= plan.offsets.length) {
       await db.query(`UPDATE sequences SET status = 'completed', ended_at = $2, next_step_at = NULL WHERE id = $1`, [s.id, now]);
       summary.completed++;
       continue;
@@ -150,9 +168,10 @@ export async function sendDueSteps(deps: EngineDeps, b: Business & { owner_email
     const startedLocal = localDate(new Date(s.started_at), b.timezone);
     const unsub = unsubscribeUrl(deps.appUrl, deps.secret, c.id);
     const msg = renderMessage({
+      kind: s.kind, templates: b.message_templates,
       step, channel, businessName: b.name, industryKey: b.industry, customerName: c.name,
       daysSince: c.rhythm?.daysSince ?? 0, learned: c.rhythm?.learned ?? false,
-      discountPct: s.discount_pct, code: s.discount_code, expires: addDays(startedLocal, CODE_VALID_DAYS),
+      discountPct: s.discount_pct, code: s.discount_code, expires: addDays(startedLocal, plan.codeValidDays),
       bookingUrl: b.booking_url, unsubscribeUrl: unsub, postalAddress: b.postal_address,
     });
     const to = channel === 'sms' ? c.phone! : c.email!;
@@ -177,11 +196,11 @@ export async function sendDueSteps(deps: EngineDeps, b: Business & { owner_email
         : await sendEmail(providers, { to, fromName: b.name, replyTo: b.reply_to_email || b.owner_email, subject: msg.subject, text: msg.body, unsub });
       await db.query(`UPDATE messages SET status = 'sent', provider_id = $2 WHERE id = $1`, [messageId, result.providerId]);
       const nextStep = step + 1;
-      if (nextStep >= STEP_OFFSETS_DAYS.length) {
+      if (nextStep >= plan.offsets.length) {
         await db.query(`UPDATE sequences SET steps_sent = $2, status = 'completed', ended_at = $3, next_step_at = NULL WHERE id = $1`, [s.id, nextStep, now]);
         summary.completed++;
       } else {
-        const next = new Date(new Date(s.started_at).getTime() + STEP_OFFSETS_DAYS[nextStep]! * DAY);
+        const next = new Date(new Date(s.started_at).getTime() + plan.offsets[nextStep]! * DAY);
         await db.query(`UPDATE sequences SET steps_sent = $2, next_step_at = $3 WHERE id = $1`, [s.id, nextStep, next]);
       }
       summary.sent++;
@@ -239,8 +258,14 @@ export async function runTick(deps: EngineDeps, now = new Date()): Promise<TickS
         summary.wins += await detectWins(db, b, now);
         let states = await loadCustomerStates(db, b, now);
         if (b.autopilot) {
-          for (const c of eligibleForWinback(states, smsAllowedFor(b, deps.providers), now)) {
+          const smsOk = smsAllowedFor(b, deps.providers);
+          for (const c of eligibleForWinback(states, smsOk, now)) {
             if (await startSequence(db, b, c, now)) summary.started++;
+          }
+          if (b.second_visit_enabled) {
+            for (const c of eligibleForSecondVisit(states, b, smsOk)) {
+              if (await startSequence(db, b, c, now, 'second_visit')) summary.started++;
+            }
           }
           states = await loadCustomerStates(db, b, now);
         }

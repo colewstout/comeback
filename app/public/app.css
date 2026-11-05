@@ -164,3 +164,38 @@ tr:last-child td{border-bottom:0}
 .dl dd{margin:0}
 .tab > .card + .card, .tab > .card + form.card, .tab > form.card + .card { margin-top: 16px; }
 .notice{background:var(--pine-soft);border-radius:12px;padding:12px 14px;font-size:14.5px}
+
+/* message wording */
+.wstep{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.wtext{font:15px/1.5 var(--body);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;resize:vertical;width:100%}
+.wstep [data-reset]{align-self:flex-start}
+#wordingCard code{font:12.5px var(--mono);background:var(--sunk);padding:1px 5px;border-radius:5px}
+#wordingCard h3{margin-top:10px}
+
+/* audit report */
+.eyebrow{font:500 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+#auditReport{margin-top:20px}
+.report{display:flex;flex-direction:column;gap:18px}
+.rtitle{font-size:30px;margin:4px 0}
+.rbig{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rbig div{background:var(--sunk);border-radius:14px;padding:16px}
+.rbig b{display:block;font:800 34px/1.1 var(--display);color:var(--over);font-variant-numeric:tabular-nums}
+.rbig span{font-size:14px;color:var(--muted)}
+.rbar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--sunk)}
+.rbar span{display:block;height:100%}
+.rlegend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.rlegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.rcols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.rcols > div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.rnext{background:var(--pine-soft);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px}
+@media (max-width:760px){.rbig,.rcols{grid-template-columns:1fr}}
+.tile.good b{color:var(--pine)}
+@media (max-width:760px){#adminBody .tiles{grid-template-columns:1fr 1fr!important}}
+@media print{
+  .top,.banner,.no-print,#tab-overview,#tab-import,#tab-messages,#tab-settings,#tab-admin,.toast{display:none!important}
+  body{background:#fff;color:#000}
+  .card{box-shadow:none;border:0;padding:0}
+  .report{gap:14px}
+  .rbig div,.rnext{border:1px solid #ccc}
+}
+#auditReport{scroll-margin-top:90px}

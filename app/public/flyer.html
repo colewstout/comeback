@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One More Time Flyer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Letter-size, one page. Click the dashed fields to type your own contact details, then print. */
+:root{--ink:#13221C;--muted:#5A6962;--pine:#1E5B45;--marigold:#E3A21A;--soft:#FBF0D6;--paper:#FBFCF8;--line:#D9DFD6;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0;background:#E9ECE6;color:var(--ink);font:15px/1.5 "Figtree","Helvetica Neue",system-ui,sans-serif}
+.bar{max-width:8.5in;margin:16px auto;padding:0 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.bar button{font:600 14px inherit;font-family:inherit;background:var(--pine);color:#fff;border:0;border-radius:999px;padding:10px 18px;cursor:pointer}
+.page{width:min(8.5in,100% - 32px);margin:0 auto 32px;background:var(--paper);padding:.6in .65in;display:flex;flex-direction:column;gap:22px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.brand{display:flex;align-items:center;gap:10px;font:800 24px "Bricolage Grotesque",system-ui,sans-serif}
+h1{font:800 44px/1.04 "Bricolage Grotesque",system-ui,sans-serif;margin:0;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--pine);background:linear-gradient(transparent 62%,var(--soft) 62%)}
+.lede{font-size:18px;color:var(--muted);margin:0}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.cols div{border-top:3px solid var(--ink);padding-top:12px}
+.cols b{display:block;font:700 18px "Bricolage Grotesque",system-ui,sans-serif;margin-bottom:4px}
+.example{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+.bubble{background:var(--pine);color:#fff;border-radius:16px 16px 4px 16px;padding:12px 14px;font-size:14.5px}
+.result b{display:block;font:800 30px "Bricolage Grotesque",system-ui,sans-serif;color:var(--pine)}
+.offer{background:var(--pine);color:#fff;border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:6px}
+.offer b{font:800 24px "Bricolage Grotesque",system-ui,sans-serif}
+.price{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:15px}
+.contact{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;border-top:1px solid var(--line);padding-top:16px}
+.contact .edit{font:700 18px "Bricolage Grotesque",system-ui,sans-serif;outline:1px dashed var(--marigold);outline-offset:3px;border-radius:4px;min-width:6ch;display:inline-block}
+.contact small{display:block;color:var(--muted);font-size:13px}
+@media (max-width:700px){.cols,.example{grid-template-columns:1fr} h1{font-size:34px} .page{padding:28px 22px}}
+@page{size:letter;margin:0}
+@media print{html,body{background:#fff}.bar{display:none}.page{box-shadow:none;margin:0;width:8.5in;min-height:11in}.contact .edit{outline:0}}
+</style>
+</head>
+<body>
+<div class="bar"><span>Click the dashed text at the bottom to add your name, phone and email, then print.</span><button type="button" onclick="window.print()">Print flyer</button></div>
+<main class="page">
+  <div class="brand"><svg width="30" height="30" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="none" stroke="#1E5B45" stroke-width="3" stroke-dasharray="52 18" stroke-linecap="round" transform="rotate(-30 13 13)"/><circle cx="21.5" cy="7" r="3" fill="#E3A21A"/></svg>One More Time</div>
+  <h1>Some of your regulars stopped coming in. <em>We'll bring them back.</em></h1>
+  <p class="lede">One More Time reads your Square or booking history, learns how often each customer usually comes in, and sends a friendly note with a discount when they're overdue. Every Monday you see exactly how much money came back.</p>
+  <div class="cols">
+    <div><b>Connect in 10 minutes</b>Link Square or send us a sales export. We do the setup for you.</div>
+    <div><b>We spot who's slipping</b>Every customer gets a personal "due date" from their own visit history.</div>
+    <div><b>They come back</b>A check-in, then a discount, then a last call. It stops the moment they book.</div>
+  </div>
+  <div class="example">
+    <div class="bubble">Hi Dana, it's Sudsy Paws! It's been about 9 weeks since Biscuit's last groom. Here's 15% off if you book before Dec 2. Code DANA15.</div>
+    <div class="result"><b>+$95</b>Dana booked two days later. That's one text paying for two months of One More Time.</div>
+  </div>
+  <div class="offer"><b>Free lost-customer audit</b>Send us your sales export and we'll show you, at no cost, how many customers are overdue and what that's worth every month. No obligation, nothing to install.</div>
+  <div class="price"><span><b>From $49/month.</b> Cancel any time.</span><span>Preston Hollow founding members: <b>free setup, first month free</b></span></div>
+  <div class="contact">
+    <div><small>Your neighbor in Preston Hollow</small><span class="edit" contenteditable="true" spellcheck="false">[Your name]</span></div>
+    <div><small>Call or text</small><span class="edit" contenteditable="true" spellcheck="false">[Your phone]</span></div>
+    <div><small>Email</small><span class="edit" contenteditable="true" spellcheck="false">[Your email]</span></div>
+  </div>
+</main>
+</body>
+</html>

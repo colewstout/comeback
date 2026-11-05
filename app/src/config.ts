@@ -30,6 +30,9 @@ const schema = z.object({
   SQUARE_ENVIRONMENT: z.enum(['production', 'sandbox']).default('production'),
   // Encrypts stored Square tokens. Falls back to a key derived from SESSION_SECRET.
   TOKEN_ENCRYPTION_KEY: optional,
+
+  // Comma-separated emails that can see the founder admin page (waitlist, all businesses, audits).
+  ADMIN_EMAILS: optional,
 });
 
 export type Config = z.infer<typeof schema>;

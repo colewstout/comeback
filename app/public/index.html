@@ -497,10 +497,19 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
       <h2>Become a founding member</h2>
       <p>We're onboarding the first 25 businesses by hand. You get free done-for-you setup, half off for three months, and a direct line to the founder.</p>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-start">
-      <a class="btn" href="/app#signup" style="background:var(--marigold);color:#1b1404">Start your free 30-day trial</a>
-      <a href="/app#login" style="color:var(--pine-ink)">Already have an account? Log in</a>
-    </div>
+    <form id="waitlistForm" novalidate>
+      <input id="wl-name" name="name" placeholder="Your name" autocomplete="name" aria-label="Your name">
+      <input id="wl-biz" name="business" placeholder="Business name" autocomplete="organization" aria-label="Business name" required>
+      <input id="wl-email" class="full" name="email" type="email" placeholder="Email" autocomplete="email" aria-label="Email" required>
+      <input id="wl-phone" name="phone" type="tel" placeholder="Phone (optional)" autocomplete="tel" aria-label="Phone">
+      <select id="wl-type" name="type" aria-label="Type of business">
+        <option>Dog groomer</option><option>Car detailer</option><option>Salon or barber</option><option>Nail or lash studio</option><option>Fitness studio</option><option>Café or restaurant</option><option>Something else</option>
+      </select>
+      <input id="wl-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <button class="btn full" type="submit">Request a founding spot</button>
+      <div class="msgbox" id="wlMsg" role="status" hidden></div>
+      <p class="full" style="margin:0;font-size:14px;opacity:.85">Want to start right away? <a href="/app#signup" style="color:var(--pine-ink)">Start your free 30-day trial</a> · <a href="/app#login" style="color:var(--pine-ink)">Log in</a></p>
+    </form>
   </div>
 </section>
 </main>
@@ -760,5 +769,33 @@ render();
 })();
 </script>
 
+
+<script>
+(() => {
+  const f = document.getElementById('waitlistForm');
+  if (!f) return;
+  const box = document.getElementById('wlMsg');
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('wl-email').value.trim();
+    const biz = document.getElementById('wl-biz').value.trim();
+    box.hidden = false;
+    if (!biz || !/^\S+@\S+\.\S+$/.test(email)) { box.textContent = 'Please add your business name and a valid email.'; return; }
+    const btn = f.querySelector('button[type=submit]'); btn.disabled = true; box.textContent = 'Sending…';
+    try {
+      const res = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        name: document.getElementById('wl-name').value.trim(), businessName: biz, email,
+        phone: document.getElementById('wl-phone').value.trim(), businessType: document.getElementById('wl-type').value,
+        website: document.getElementById('wl-website').value,
+      }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      f.reset();
+      box.textContent = "Thanks! You're on the founding-member list. We'll reach out within two business days to set up your free lost-customer audit.";
+    } catch (err) { box.textContent = err.message; }
+    finally { btn.disabled = false; }
+  });
+})();
+</script>
 </body>
 </html>

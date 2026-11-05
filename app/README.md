@@ -12,6 +12,12 @@ The backend and owner dashboard for One More Time: it tracks how often each cust
 | Rhythm engine | `src/lib/rhythm.ts` | Each customer's usual gap is the median time between visits. Due at 1×, overdue at 1.5× (adjustable), lapsed at 3×. |
 | Win-back engine | `src/services/sequences.ts` | Starts sequences, sends steps on day 0, 7 and 21 inside sending hours, retries failures, records wins. |
 | Square sync | `src/integrations/square.ts`, `src/services/squareSync.ts` | Connects a Square account (read-only), imports a year of payments, then syncs hourly. |
+| Second-visit offers | `src/services/sequences.ts` | With autopilot on, first-time customers get a thank-you offer just before they'd usually return (two messages, day 0 and day 10). |
+| Owner wording | `src/lib/templates.ts` | Owners rewrite any message with placeholders like `{first_name}` and `{code}`. Opt-out text is always added. |
+| Reply alerts | `src/routes/webhooks.ts` | A customer's text reply pauses their automatic messages and emails the owner. |
+| Lost-customer audit | `src/services/audit.ts` | Upload a prospect's sales export, get a printable report. Nothing is saved. |
+| Waitlist and admin | `src/routes/growth.ts` | Website sign-up form saves to the database; emails in `ADMIN_EMAILS` see an Admin tab with sign-ups and every business. |
+| Flyer | `public/flyer.html` | Printable one-page flyer with editable contact details. |
 | Scheduler | `src/jobs/scheduler.ts` | Runs inside the server every 15 minutes: Square sync, then due messages, plus the Monday report email. |
 | Database | `src/db/migrations/` | Plain SQL, applied automatically at startup. |
 
@@ -50,6 +56,11 @@ The tests need a Postgres database named `comeback_test` (or set `TEST_DATABASE_
 The simplest route is [Render](https://render.com): push this repo to GitHub, then **New → Blueprint** and pick the repo. `render.yaml` creates the server and a Postgres database. Expect about $7/month for the server and $6/month for the database. Set `APP_URL` to your address when Render asks.
 
 Any host that runs Docker works the same way: build `app/Dockerfile` and give it a `DATABASE_URL`.
+
+### Founder tools
+- Set `ADMIN_EMAILS` to your email. After you log in, you'll see an **Admin** tab with website sign-ups and every business's plan, customers and results.
+- The **Audit** tab makes a lost-customer report from any business's sales export, to show prospects. Use **Print or save as PDF** to send it.
+- The flyer is at `/flyer.html`: click the dashed fields to add your contact details, then print.
 
 ### Password reset
 "Forgot your password?" on the login page emails a one-time link that expires after an hour. It needs email turned on (below). Using the link logs the person out everywhere else. The reply never reveals whether an account exists, and each account gets at most 3 reset emails an hour.
