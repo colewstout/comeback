@@ -1,4 +1,4 @@
-# One-click deploy on Render: New > Blueprint > pick this repo.
+# One-click deploy on Render: New > Blueprint > pick this repo. Render reads this file from the repo root.
 # Creates the web app (which also runs the 15-minute message scheduler) and a Postgres database.
 databases:
   - name: one-more-time-db
@@ -11,6 +11,8 @@ services:
     name: one-more-time
     runtime: docker
     rootDir: app
+    dockerfilePath: ./app/Dockerfile
+    dockerContext: ./app
     plan: starter # always-on; the free plan sleeps, which would pause the scheduler
     healthCheckPath: /healthz
     envVars:
@@ -22,8 +24,8 @@ services:
         generateValue: true
       - key: CRON_SECRET
         generateValue: true
-      - key: APP_URL
-        sync: false # e.g. https://app.yourdomain.com
+      # APP_URL is optional: the app uses its onrender.com address until you add one
+      # for a custom domain (e.g. https://app.onemoretime.app).
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN
