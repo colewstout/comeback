@@ -172,6 +172,30 @@ describe('reply alerts', () => {
   });
 });
 
+describe('HELP keyword', () => {
+  it('does not treat HELP as a reply that pauses messages', async () => {
+    const c = await signup();
+    await api(c).post('/api/imports', { csv: CSV });
+    const dana = (await api(c).get('/api/customers')).json().customers.find((x: any) => x.name === 'Dana Reyes');
+    await api(c).post(`/api/customers/${dana.id}/winback`);
+    const params = { From: '+15552013344', To: '+15550000000', Body: 'help', MessageSid: 'SM10' };
+    const sig = twilioSignature('twilio-token', 'https://app.test/webhooks/twilio/sms', params);
+    await app.inject({ method: 'POST', url: '/webhooks/twilio/sms', payload: new URLSearchParams(params).toString(), headers: { 'content-type': 'application/x-www-form-urlencoded', 'x-twilio-signature': sig } });
+    await flush();
+    const detail = (await api(c).get(`/api/customers/${dana.id}`)).json();
+    expect(detail.sequences[0].status).toBe('active');
+    expect(sent.some((m) => /replied to your text/.test(m.subject ?? ''))).toBe(false);
+  });
+});
+
+describe('legal pages', () => {
+  it('serves the terms and privacy policy', async () => {
+    for (const url of ['/terms.html', '/privacy.html', '/legal.css']) expect((await app.inject({ method: 'GET', url })).statusCode).toBe(200);
+    const privacy = (await app.inject({ method: 'GET', url: '/privacy.html' })).body;
+    expect(privacy).toMatch(/No mobile information will be shared with third parties or affiliates for marketing or promotional purposes/);
+  });
+});
+
 describe('waitlist and admin', () => {
   const join = (payload: object, ip = '10.0.0.1') => app.inject({ method: 'POST', url: '/api/waitlist', payload, remoteAddress: ip });
 

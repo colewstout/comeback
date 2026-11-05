@@ -1,0 +1,29 @@
+/* Shared styles for Terms and Privacy. Same identity as the One More Time site. */
+:root{
+  --paper:#F4F6F1; --surface:#FFFFFF; --ink:#13221C; --muted:#5A6962; --line:#D9DFD6;
+  --pine:#1E5B45; --marigold-soft:#FBF0D6; --sunk:#EAEEE7;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Figtree","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{--paper:#0E1512;--surface:#15201B;--ink:#E6EEE9;--muted:#9AABA2;--line:#27362E;--pine:#62C497;--marigold-soft:#3A2F14;--sunk:#1B2822;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16.5px/1.7 var(--body)}
+a{color:var(--pine)}
+header{border-bottom:1px solid var(--line);padding:14px max(16px,env(safe-area-inset-right,0px)) 14px max(16px,env(safe-area-inset-left,0px))}
+header a.logo{display:inline-flex;align-items:center;gap:8px;font:800 20px var(--display);color:var(--ink);text-decoration:none}
+main{max-width:72ch;margin:0 auto;padding:40px max(16px,env(safe-area-inset-right,0px)) 80px max(16px,env(safe-area-inset-left,0px))}
+h1{font:800 clamp(32px,5vw,44px)/1.1 var(--display);margin:0 0 8px}
+h2{font:700 22px/1.25 var(--display);margin:40px 0 8px}
+h3{font:700 17px/1.3 var(--display);margin:24px 0 4px}
+p,li{margin:10px 0}
+ul{padding-left:22px}
+.meta{color:var(--muted);margin:0 0 24px}
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:20px 0}
+.summary h2{margin-top:0;font-size:18px}
+.fill{background:var(--marigold-soft);border-radius:4px;padding:0 4px;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:12px 0}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted)}
+.tbl{overflow-x:auto}
+footer{border-top:1px solid var(--line);padding:24px 16px;text-align:center;color:var(--muted);font-size:14px}

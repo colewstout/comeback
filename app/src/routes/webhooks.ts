@@ -6,6 +6,8 @@ import { stopSequences } from '../services/sequences.js';
 
 const STOP_WORDS = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'OPTOUT', 'REVOKE']);
 const START_WORDS = new Set(['START', 'UNSTOP', 'YES']);
+// Twilio answers these with the carrier-required help message, so they aren't real replies.
+const HELP_WORDS = new Set(['HELP', 'INFO']);
 
 const page = (title: string, msg: string) => `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
 <style>body{font:17px/1.5 system-ui,sans-serif;background:#F4F6F1;color:#13221C;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}main{max-width:420px;background:#fff;border:1px solid #D9DFD6;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}button{font:600 15px system-ui;background:#1E5B45;color:#fff;border:0;border-radius:999px;padding:10px 18px;cursor:pointer}</style></head><body><main>${msg}</main></body></html>`;
@@ -49,7 +51,7 @@ export async function webhookRoutes(app: FastifyInstance) {
         await stopSequences(db, c.id, 'opted_out', now());
       } else if (START_WORDS.has(word)) {
         await db.query(`UPDATE customers SET sms_opted_out_at = NULL WHERE id = $1`, [c.id]);
-      } else if (body) {
+      } else if (body && !HELP_WORDS.has(word)) {
         // A real reply ("booked for Thursday!", a question): pause the automatic messages so a
         // person answers, and tell the owner right away.
         await stopSequences(db, c.id, 'replied', now());

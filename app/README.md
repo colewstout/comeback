@@ -62,10 +62,14 @@ Any host that runs Docker works the same way: build `app/Dockerfile` and give it
 - The **Audit** tab makes a lost-customer report from any business's sales export, to show prospects. Use **Print or save as PDF** to send it.
 - The flyer is at `/flyer.html`: click the dashed fields to add your contact details, then print.
 
+### Legal pages
+`/terms.html` and `/privacy.html` are drafts. Fill in the bracketed blanks (legal name, address, contact emails, dates, retention periods) and have a lawyer review them before taking paying customers. The privacy policy includes the texting-consent wording Twilio looks for during number verification.
+
 ### Password reset
 "Forgot your password?" on the login page emails a one-time link that expires after an hour. It needs email turned on (below). Using the link logs the person out everywhere else. The reply never reveals whether an account exists, and each account gets at most 3 reset emails an hour.
 
 ### Turn on email (Resend, free up to about 3,000/month)
+Step-by-step guide with DNS records and troubleshooting: [`docs/email-setup-resend.md`](../docs/email-setup-resend.md). Quick version:
 1. Create a Resend account and verify a sending domain, such as `mail.yourdomain.com`.
 2. Set `RESEND_API_KEY` and `EMAIL_FROM` (for example `hello@mail.yourdomain.com`).
 
