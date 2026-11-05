@@ -53,7 +53,7 @@ The tests need a Postgres database named `comeback_test` (or set `TEST_DATABASE_
 
 ## Put it online
 
-The simplest route is [Render](https://render.com): push this repo to GitHub, then **New → Blueprint** and pick the repo. `render.yaml` creates the server and a Postgres database. Expect about $7/month for the server and $6/month for the database. Set `APP_URL` to your address when Render asks.
+The simplest route is [Render](https://render.com): **New → Blueprint** and pick this repo. `render.yaml` (at the repo root) creates the server and a Postgres database. Expect about $7/month for the server and $6/month for the database. The app uses its `onrender.com` address automatically; set `APP_URL` only when you add a custom domain.
 
 Any host that runs Docker works the same way: build `app/Dockerfile` and give it a `DATABASE_URL`.
 

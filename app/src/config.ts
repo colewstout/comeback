@@ -38,7 +38,9 @@ const schema = z.object({
 export type Config = z.infer<typeof schema>;
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const config = schema.parse(env);
+  // On Render, use the service's own address unless APP_URL is set (e.g. a custom domain).
+  const withDefaults = !env.APP_URL && env.RENDER_EXTERNAL_URL ? { ...env, APP_URL: env.RENDER_EXTERNAL_URL } : env;
+  const config = schema.parse(withDefaults);
   if (config.NODE_ENV === 'production') {
     if (config.SESSION_SECRET.startsWith('dev-') || config.SESSION_SECRET.length < 32) {
       throw new Error('Set SESSION_SECRET to a random string of at least 32 characters in production.');

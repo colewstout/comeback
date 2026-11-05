@@ -160,3 +160,11 @@ describe('security', () => {
     expect(canSend({ plan: 'growth', plan_status: 'canceled', trial_ends_at: '2026-12-01' }, now)).toBe(false);
   });
 });
+
+describe('config on Render', () => {
+  it('uses Render’s address unless APP_URL is set', async () => {
+    const { loadConfig } = await import('../src/config.js');
+    expect(loadConfig({ RENDER_EXTERNAL_URL: 'https://one-more-time.onrender.com' }).APP_URL).toBe('https://one-more-time.onrender.com');
+    expect(loadConfig({ RENDER_EXTERNAL_URL: 'https://x.onrender.com', APP_URL: 'https://app.onemoretime.app' }).APP_URL).toBe('https://app.onemoretime.app');
+  });
+});
