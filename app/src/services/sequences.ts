@@ -34,7 +34,10 @@ export function chooseChannel(c: Reachable, smsAllowed: boolean): 'sms' | 'email
 }
 
 export function smsAllowedFor(b: Business, providers: Providers): boolean {
-  return providers.sms !== null && planLimits(b.plan).sms;
+  if (providers.sms === null || !planLimits(b.plan).sms) return false;
+  // With real texting, a business needs a verified number of its own (or a shared default) to send
+  // from. Without one, its customers get email instead of texts that would fail.
+  return !providers.sms.requiresSender || Boolean(b.sms_from || providers.sms.defaultFrom);
 }
 
 export const unsubscribeUrl = (appUrl: string, secret: string, customerId: string) =>

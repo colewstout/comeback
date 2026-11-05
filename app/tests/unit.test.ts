@@ -168,3 +168,15 @@ describe('config on Render', () => {
     expect(loadConfig({ RENDER_EXTERNAL_URL: 'https://x.onrender.com', APP_URL: 'https://app.onemoretime.app' }).APP_URL).toBe('https://app.onemoretime.app');
   });
 });
+
+describe('texting needs a sending number', () => {
+  it('falls back to email when a business has no number of its own', async () => {
+    const { smsAllowedFor } = await import('../src/services/sequences.js');
+    const { twilioSms } = await import('../src/providers/index.js');
+    const b = { plan: 'growth', sms_from: null } as any;
+    expect(smsAllowedFor(b, { sms: twilioSms('AC1', 'tok', undefined), email: null })).toBe(false);
+    expect(smsAllowedFor({ ...b, sms_from: '+18005550123' }, { sms: twilioSms('AC1', 'tok', undefined), email: null })).toBe(true);
+    expect(smsAllowedFor(b, { sms: twilioSms('AC1', 'tok', '+18005550100'), email: null })).toBe(true);
+    expect(smsAllowedFor({ ...b, plan: 'starter', sms_from: '+18005550123' }, { sms: twilioSms('AC1', 'tok', undefined), email: null })).toBe(false);
+  });
+});

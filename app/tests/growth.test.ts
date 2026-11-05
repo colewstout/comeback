@@ -172,6 +172,32 @@ describe('reply alerts', () => {
   });
 });
 
+describe('guided setup', () => {
+  it('tracks each step and previews who autopilot would contact', async () => {
+    const c = await signup();
+    let st = (await api(c).get('/api/setup')).json();
+    expect(st).toMatchObject({ done: 0, total: 4, complete: false, dismissed: false, customers: 0 });
+
+    await api(c).post('/api/imports', { csv: CSV });
+    st = (await api(c).get('/api/setup')).json();
+    expect(st.steps).toEqual({ data: true, details: false, messages: false, autopilot: false });
+    // Dana (text) and Priya (email) are overdue; Nora (text) is due a second-visit offer.
+    expect(st.autopilotPreview.winback).toEqual({ count: 2, sms: 1, email: 1 });
+    expect(st.autopilotPreview.secondVisit).toEqual({ count: 1, sms: 1, email: 0 });
+    expect(st.autopilotPreview.sendWindow).toEqual({ start: 9, end: 20, timezone: 'America/New_York' });
+    expect(sent).toHaveLength(0); // previewing sends nothing
+
+    await api(c).patch('/api/business', { postal_address: '12 Main St, Dallas, TX 75230' });
+    await api(c).post('/api/setup/messages-reviewed');
+    await api(c).patch('/api/business', { autopilot: true });
+    st = (await api(c).get('/api/setup')).json();
+    expect(st).toMatchObject({ done: 4, complete: true });
+
+    await api(c).patch('/api/business', { setup_dismissed: true });
+    expect((await api(c).get('/api/setup')).json().dismissed).toBe(true);
+  });
+});
+
 describe('HELP keyword', () => {
   it('does not treat HELP as a reply that pauses messages', async () => {
     const c = await signup();
@@ -224,6 +250,14 @@ describe('waitlist and admin', () => {
     expect(o.totals).toMatchObject({ waitlist: 1, businesses: 2, paying: 0, mrr: 0 });
     expect(o.waitlist[0].business_name).toBe('Sudsy Paws');
     expect((await app.inject({ method: 'GET', url: '/api/admin/overview' })).statusCode).toBe(401);
+
+    // Founders assign each business its own texting number.
+    const biz = o.businesses.find((b: any) => b.owner_email === 'owner@maple.test');
+    expect((await api(owner).patch(`/api/admin/businesses/${biz.id}`, { sms_from: '+18005550123' })).statusCode).toBe(403);
+    expect((await api(founder).patch(`/api/admin/businesses/${biz.id}`, { sms_from: 'nope' })).statusCode).toBe(400);
+    expect((await api(founder).patch(`/api/admin/businesses/${biz.id}`, { sms_from: '(800) 555-0123' })).json()).toEqual({ ok: true, sms_from: '+18005550123' });
+    const other = o.businesses.find((b: any) => b.owner_email === 'founder@onemoretime.test');
+    expect((await api(founder).patch(`/api/admin/businesses/${other.id}`, { sms_from: '+18005550123' })).statusCode).toBe(409);
   });
 });
 
