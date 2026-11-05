@@ -6,6 +6,7 @@ import type { Business } from './businesses.js';
 
 export interface SequenceSummary {
   id: string;
+  kind: 'winback' | 'second_visit';
   status: 'active' | 'won' | 'completed' | 'stopped';
   steps_sent: number;
   started_at: Date;
@@ -46,7 +47,7 @@ export async function loadCustomerStates(db: Queryable, b: Business, now: Date, 
             (SELECT json_agg(json_build_object('d', v.visited_at, 'a', v.amount_cents) ORDER BY v.visited_at)
                FROM visits v WHERE v.customer_id = c.id) AS visits,
             (SELECT row_to_json(s) FROM (
-               SELECT id, status, steps_sent, started_at, next_step_at, ended_at, discount_code, recovered_cents
+               SELECT id, kind, status, steps_sent, started_at, next_step_at, ended_at, discount_code, recovered_cents
                  FROM sequences WHERE customer_id = c.id ORDER BY started_at DESC LIMIT 1) s) AS sequence
        FROM customers c
       WHERE c.business_id = $1 AND ($2::uuid IS NULL OR c.id = $2)`,

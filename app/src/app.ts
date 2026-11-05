@@ -20,6 +20,7 @@ import { BillingError } from './services/billing.js';
 import { SyncError, type SquareDeps } from './services/squareSync.js';
 import { squareDepsFromConfig } from './integrations/deps.js';
 import { integrationRoutes } from './routes/integrations.js';
+import { growthRoutes } from './routes/growth.js';
 
 export interface AppDeps {
   config: Config;
@@ -101,6 +102,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(webhookRoutes);
   await app.register(jobRoutes, { prefix: '/jobs' });
   await app.register(integrationRoutes);
+  await app.register(growthRoutes);
 
   const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
   await app.register(fastifyStatic, { root: publicDir, index: ['index.html'] });

@@ -65,6 +65,8 @@
         <a href="#import" data-tab="import">Upload sales</a>
         <a href="#messages" data-tab="messages">Messages</a>
         <a href="#settings" data-tab="settings">Settings</a>
+        <a href="#audit" data-tab="audit">Audit</a>
+        <a href="#admin" data-tab="admin" id="adminTab" hidden>Admin</a>
       </nav>
       <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Log out</button>
     </div>
@@ -130,6 +132,9 @@
           <label class="field">Booking link (optional)<input id="s-booking" type="url" placeholder="https://"></label>
           <label class="field">Replies to emails go to<input id="s-reply" type="email"></label>
         </div>
+        <h2>New customers</h2>
+        <label class="check big"><input type="checkbox" id="s-second"> <span><b>Second-visit offers</b><br><span class="muted">With autopilot on, first-time customers who haven't been back get a thank-you note with a discount just before they'd usually return. Most first-timers never come back, so this is often where the biggest wins are.</span></span></label>
+        <div class="grid2"><label class="field">Second-visit discount (%)<input id="s-second-pct" type="number" min="0" max="50" step="1"></label></div>
         <h2>Business</h2>
         <div class="grid2">
           <label class="field">Business name<input id="s-name" required></label>
@@ -143,7 +148,28 @@
         </div>
         <div class="row-gap"><button class="btn btn-primary" type="submit">Save settings</button><span id="settingsMsg" class="muted" aria-live="polite"></span></div>
       </form>
+      <div class="card stack" id="wordingCard"></div>
       <div class="card stack" id="billingCard"></div>
+    </section>
+
+    <!-- Audit (for prospects) -->
+    <section id="tab-audit" class="tab" hidden>
+      <div class="head no-print"><div><h1>Lost-customer audit</h1><p class="muted">Show a business owner what they're losing. Upload their sales export and get a report you can print or save as a PDF. Nothing from the file is saved.</p></div></div>
+      <form class="card stack no-print" id="auditForm">
+        <div class="grid2">
+          <label class="field">Business name<input id="a-name" placeholder="Kibble Pet Grooming" required></label>
+          <label class="field">Type of business<select id="a-industry"></select></label>
+        </div>
+        <div class="row-gap"><label class="btn btn-primary" for="a-file">Choose sales export (CSV)</label><input id="a-file" type="file" accept=".csv,text/csv" class="sr"><span class="muted small" id="a-fileName">One row per purchase: customer, date, amount, and phone or email if available.</span></div>
+        <p class="error" id="auditError" hidden></p>
+      </form>
+      <div id="auditReport"></div>
+    </section>
+
+    <!-- Admin (founder only) -->
+    <section id="tab-admin" class="tab" hidden>
+      <div class="head"><div><h1>Admin</h1><p class="muted">Founding-member sign-ups from the website and every business using One More Time.</p></div></div>
+      <div id="adminBody"></div>
     </section>
   </main>
 </div>

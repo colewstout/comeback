@@ -11,7 +11,7 @@ const page = (title: string, msg: string) => `<!doctype html><html><head><meta c
 <style>body{font:17px/1.5 system-ui,sans-serif;background:#F4F6F1;color:#13221C;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}main{max-width:420px;background:#fff;border:1px solid #D9DFD6;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 8px}button{font:600 15px system-ui;background:#1E5B45;color:#fff;border:0;border-radius:999px;padding:10px 18px;cursor:pointer}</style></head><body><main>${msg}</main></body></html>`;
 
 export async function webhookRoutes(app: FastifyInstance) {
-  const { db, config } = app.deps;
+  const { db, config, providers } = app.deps;
   const now = () => app.deps.now();
 
   // ---- Inbound texts from Twilio: handle STOP / START and keep replies for the owner.
@@ -36,8 +36,9 @@ export async function webhookRoutes(app: FastifyInstance) {
 
     // Find matching customers: the business that owns the number they texted, or every business
     // that has this phone number when a single shared sending number is used.
-    const { rows: customers } = await db.query<{ id: string; business_id: string }>(
-      `SELECT c.id, c.business_id FROM customers c JOIN businesses b ON b.id = c.business_id
+    const { rows: customers } = await db.query<{ id: string; business_id: string; name: string; business_name: string; alert_email: string }>(
+      `SELECT c.id, c.business_id, c.name, b.name AS business_name, COALESCE(b.reply_to_email, u.email) AS alert_email
+         FROM customers c JOIN businesses b ON b.id = c.business_id JOIN users u ON u.id = b.owner_id
         WHERE c.phone = $1 AND ($2::text IS NULL OR b.sms_from = $2 OR b.sms_from IS NULL)`,
       [from, to],
     );
@@ -48,6 +49,21 @@ export async function webhookRoutes(app: FastifyInstance) {
         await stopSequences(db, c.id, 'opted_out', now());
       } else if (START_WORDS.has(word)) {
         await db.query(`UPDATE customers SET sms_opted_out_at = NULL WHERE id = $1`, [c.id]);
+      } else if (body) {
+        // A real reply ("booked for Thursday!", a question): pause the automatic messages so a
+        // person answers, and tell the owner right away.
+        await stopSequences(db, c.id, 'replied', now());
+        if (providers.email && c.alert_email) {
+          void providers.email.send({
+            to: c.alert_email, fromName: 'One More Time',
+            subject: `${c.name} replied to your text`,
+            text: [
+              `${c.name} replied to a message from ${c.business_name}:`, '', `"${body.slice(0, 1000)}"`, '',
+              `Reply to them directly at ${from}. We've paused the automatic messages to them so you can take it from here.`, '',
+              `See the conversation: ${config.APP_URL.replace(/\/$/, '')}/app#messages`,
+            ].join('\n'),
+          }).catch((err) => req.log.warn({ err: (err as Error).message }, 'reply alert email failed'));
+        }
       }
       await db.query(
         `INSERT INTO messages (business_id, customer_id, direction, channel, to_address, body, status, provider, provider_id)

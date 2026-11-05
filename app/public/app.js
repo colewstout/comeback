@@ -89,7 +89,7 @@
   $('logoutBtn').addEventListener('click', async () => { await api('POST', '/api/auth/logout').catch(() => {}); S.me = null; location.hash = '#login'; showAuth('login'); });
 
   // ---------- routing
-  const TABS = ['overview', 'import', 'messages', 'settings'];
+  const TABS = ['overview', 'import', 'messages', 'settings', 'audit', 'admin'];
   function route() {
     if (takeResetToken() || location.hash === '#reset') return showAuth('reset');
     const h = location.hash.slice(1);
@@ -107,13 +107,14 @@
     $('authView').hidden = true; $('appView').hidden = false;
     TABS.forEach((t) => ($(`tab-${t}`).hidden = t !== tab));
     document.querySelectorAll('[data-tab]').forEach((a) => a.setAttribute('aria-current', a.dataset.tab === tab ? 'page' : 'false'));
-    ({ overview: renderOverview, import: renderImports, messages: renderMessages, settings: renderSettings })[tab]().catch((e) => toast(e.message));
+    if (tab === 'admin' && !S.me.isAdmin) { location.hash = '#overview'; return; }
+    ({ overview: renderOverview, import: renderImports, messages: renderMessages, settings: renderSettings, audit: renderAudit, admin: renderAdmin })[tab]().catch((e) => toast(e.message));
   }
   window.addEventListener('hashchange', route);
 
   async function boot() {
     try { S.me = await api('GET', '/api/me'); } catch { S.me = null; }
-    if (S.me) renderBanner();
+    if (S.me) { renderBanner(); $('adminTab').hidden = !S.me.isAdmin; }
     route();
   }
 
@@ -132,7 +133,7 @@
   function pill(c) {
     let t = LABEL[c.display];
     if ((c.display === 'overdue' || c.display === 'lapsed') && c.rhythm) t += ` · ${c.rhythm.overdueByDays}d`;
-    if (c.display === 'in_progress' && c.sequence) t = `Message ${c.sequence.steps_sent} of 3 sent`;
+    if (c.display === 'in_progress' && c.sequence) t = c.sequence.kind === 'second_visit' ? `Second-visit offer · ${c.sequence.steps_sent} of 2 sent` : `Message ${c.sequence.steps_sent} of 3 sent`;
     return `<span class="pill p-${c.display}">${esc(t)}</span>`;
   }
 
@@ -333,6 +334,8 @@
     $('s-reply').value = b.reply_to_email || '';
     $('s-name').value = b.name;
     $('s-address').value = b.postal_address || '';
+    $('s-second').checked = b.second_visit_enabled;
+    $('s-second-pct').value = b.second_visit_discount_pct;
     $('s-industry').innerHTML = Object.entries(S.me.industries).map(([k, v]) => `<option value="${k}" ${k === b.industry ? 'selected' : ''}>${esc(v)}</option>`).join('');
     let zones = [];
     try { zones = Intl.supportedValuesOf('timeZone').filter((z) => /^(America|Pacific|Europe|Australia)\//.test(z)); } catch { zones = []; }
@@ -341,6 +344,7 @@
     $('s-start').innerHTML = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === b.send_window_start ? 'selected' : ''}>${hourLabel(h)}</option>`).join('');
     $('s-end').innerHTML = Array.from({ length: 24 }, (_, i) => i + 1).map((h) => `<option value="${h}" ${h === b.send_window_end ? 'selected' : ''}>${hourLabel(h)}</option>`).join('');
     renderBilling();
+    renderWording();
     renderSquare().catch((e) => toast(e.message));
   }
 
@@ -411,6 +415,7 @@
         booking_url: $('s-booking').value.trim(), reply_to_email: $('s-reply').value.trim(), name: $('s-name').value.trim(),
         industry: $('s-industry').value, timezone: $('s-tz').value, send_window_start: Number($('s-start').value), send_window_end: Number($('s-end').value),
         postal_address: $('s-address').value.trim() || null,
+        second_visit_enabled: $('s-second').checked, second_visit_discount_pct: Number($('s-second-pct').value),
       });
       S.me = await api('GET', '/api/me');
       msg.textContent = 'Saved.';
@@ -440,6 +445,125 @@
       if (e.target.id === 'portalBtn') { const { url } = await api('POST', '/api/billing/portal'); location.href = url; }
     } catch (err) { toast(err.message); }
   });
+
+
+  // ---------- message wording
+  const KIND_LABEL = { winback: 'Win-back (overdue customers)', second_visit: 'Second-visit offer (first-time customers)' };
+  let previewTimer;
+  function renderWording() {
+    const { business: b, templates: t } = S.me;
+    const custom = b.message_templates || {};
+    $('wordingCard').innerHTML = `
+      <h2>Message wording</h2>
+      <p class="muted">Write the messages in your own voice. Use these words in curly brackets and we'll fill them in for each customer: ${Object.entries(t.placeholders).map(([k, v]) => `<code title="${esc(v)}">{${k}}</code>`).join(' ')}. We always add “Reply STOP to opt out” to texts and an unsubscribe link to emails.</p>
+      ${Object.entries(t.steps).map(([kind, steps]) => `
+        <h3>${KIND_LABEL[kind]}</h3>
+        ${steps.map((st, i) => `
+          <div class="wstep" data-kind="${kind}" data-step="${i}">
+            <div class="row-gap" style="justify-content:space-between"><b>${i + 1}. ${esc(st.name)}</b><span class="muted small">Day ${st.day}${custom[kind] && custom[kind][i] ? ' · your wording' : ' · default'}</span></div>
+            <textarea class="wtext" id="w-${kind}-${i}" rows="3" maxlength="480" aria-label="${esc(st.name)} message">${esc((custom[kind] && custom[kind][i]) || t.defaults[kind][i])}</textarea>
+            <div class="wprev muted small" aria-live="polite"></div>
+            <button class="btn btn-ghost btn-sm" type="button" data-reset>Use default wording</button>
+          </div>`).join('')}`).join('')}
+      <div class="row-gap"><button class="btn btn-primary" type="button" id="wSave">Save wording</button><span class="muted" id="wMsg" aria-live="polite"></span></div>`;
+    document.querySelectorAll('.wstep').forEach(preview);
+  }
+  async function preview(box) {
+    const ta = box.querySelector('.wtext');
+    try {
+      const r = await api('POST', '/api/templates/preview', { kind: box.dataset.kind, step: Number(box.dataset.step), text: ta.value });
+      box.querySelector('.wprev').innerHTML = (r.problems.length ? `<span class="error">${esc(r.problems[0])}</span><br>` : '') + `Preview: ${esc(r.body)}`;
+    } catch (err) { box.querySelector('.wprev').textContent = err.message; }
+  }
+  $('wordingCard').addEventListener('input', (e) => {
+    const box = e.target.closest('.wstep'); if (!box) return;
+    clearTimeout(previewTimer); previewTimer = setTimeout(() => preview(box), 400);
+  });
+  $('wordingCard').addEventListener('click', async (e) => {
+    const reset = e.target.closest('[data-reset]');
+    if (reset) { const box = reset.closest('.wstep'); box.querySelector('.wtext').value = S.me.templates.defaults[box.dataset.kind][Number(box.dataset.step)]; return preview(box); }
+    if (e.target.id !== 'wSave') return;
+    const out = {};
+    document.querySelectorAll('.wstep').forEach((box) => {
+      const k = box.dataset.kind, i = Number(box.dataset.step), v = box.querySelector('.wtext').value.trim();
+      (out[k] = out[k] || [])[i] = v === S.me.templates.defaults[k][i] ? null : v; // unchanged = keep using the default
+    });
+    $('wMsg').textContent = 'Saving…';
+    try { await api('PATCH', '/api/business', { message_templates: out }); S.me = await api('GET', '/api/me'); renderWording(); $('wMsg').textContent = 'Saved. New messages will use this wording.'; }
+    catch (err) { $('wMsg').textContent = err.message; }
+  });
+
+  // ---------- audit
+  async function renderAudit() {
+    const sel = $('a-industry');
+    if (!sel.options.length) sel.innerHTML = Object.entries(S.me.industries).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  }
+  $('a-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    const errEl = $('auditError'); errEl.hidden = true;
+    if (!$('a-name').value.trim()) { errEl.textContent = 'Add the business name first, so it appears on the report.'; errEl.hidden = false; return; }
+    $('a-fileName').textContent = `Reading ${file.name}…`;
+    try {
+      const r = await api('POST', '/api/audit', { csv: await file.text(), industry: $('a-industry').value, businessName: $('a-name').value.trim() });
+      $('a-fileName').textContent = `Report made from ${file.name}.`;
+      renderAuditReport(r);
+    } catch (err) { errEl.textContent = err.message; errEl.hidden = false; $('a-fileName').textContent = ''; }
+  });
+  function renderAuditReport(r) {
+    const total = r.customers || 1;
+    const pct = (n) => Math.round((n / total) * 100);
+    const bar = [['ok', 'On schedule', 'var(--ok)'], ['due', 'Due now', 'var(--due)'], ['overdue', 'Overdue', 'var(--over)'], ['lapsed', 'Lapsed', 'var(--lapsed)']];
+    const ft = r.firstTimers;
+    $('auditReport').innerHTML = `
+      <article class="report card">
+        <div class="row-gap" style="justify-content:space-between;align-items:flex-start">
+          <div><span class="eyebrow">Lost-customer audit</span><h2 class="rtitle">${esc(r.businessName)}</h2>
+            <p class="muted small">${esc(r.industryLabel)} · ${r.customers.toLocaleString()} customers and ${r.visits.toLocaleString()} purchases from ${r.firstVisit ? pretty(r.firstVisit) : '—'} to ${r.lastVisit ? pretty(r.lastVisit) : '—'} · Prepared ${new Date(r.generatedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} by One More Time</p></div>
+          <button class="btn btn-ghost btn-sm no-print" type="button" onclick="window.print()">Print or save as PDF</button>
+        </div>
+        <div class="rbig">
+          <div><b>${(r.byStatus.overdue + r.byStatus.lapsed).toLocaleString()}</b><span>customers are overdue for their usual visit (${pct(r.byStatus.overdue + r.byStatus.lapsed)}% of your list)</span></div>
+          <div><b>${money(r.slippingMonthlyCents)}</b><span>a month in visits those customers used to make</span></div>
+          <div><b>${money(r.slippingYearlyCents)}</b><span>a year if they don't come back</span></div>
+        </div>
+        <div class="rbar" role="img" aria-label="Customers by status">${bar.map(([k, l, c]) => r.byStatus[k] ? `<span style="width:${(r.byStatus[k] / total) * 100}%;background:${c}" title="${l}: ${r.byStatus[k]}"></span>` : '').join('')}</div>
+        <div class="rlegend">${bar.map(([k, l, c]) => `<span><i style="background:${c}"></i>${l}: <b>${r.byStatus[k]}</b></span>`).join('')}</div>
+        <div class="rcols">
+          <div><h3>What winning some back is worth</h3><p>If 1 in 10 overdue customers comes back: <b>${money(r.recover10MonthlyCents)} a month</b>.<br>If 1 in 5 comes back: <b>${money(r.recover20MonthlyCents)} a month</b>.</p><p class="muted small">Average purchase ${money(r.avgVisitCents)}${r.medianGapDays ? ` · Regulars usually come back every ${r.medianGapDays >= 14 ? Math.round(r.medianGapDays / 7) + ' weeks' : r.medianGapDays + ' days'}` : ''}</p></div>
+          <div><h3>First-time customers</h3>${ft.rate == null ? '<p class="muted">Not enough history to tell yet.</p>' : `<p><b>${Math.round(ft.rate * 100)}%</b> of first-time customers came back for a second visit (${ft.cameBack} of ${ft.total}).</p><p class="muted small">A thank-you offer a few weeks after the first visit is one of the easiest ways to raise this.</p>`}</div>
+          <div><h3>How we'd reach them</h3><p>${r.reachable.phone} have a phone number, ${r.reachable.email} more have an email${r.reachable.none ? `, and ${r.reachable.none} have no contact details` : ''}.</p><p class="muted small">Texts only go to customers who agreed to receive them.</p></div>
+        </div>
+        ${r.topOverdue.length ? `<h3>Overdue customers worth the most</h3>
+        <div class="tbl"><table><thead><tr><th>Customer</th><th>Last visit</th><th class="n">Usually every</th><th class="n">Days overdue</th><th class="n">Avg spend</th></tr></thead><tbody>
+          ${r.topOverdue.map((o) => `<tr><td>${esc(o.name)}</td><td>${pretty(o.lastVisit)}</td><td class="n">${o.usualGapDays >= 14 ? Math.round(o.usualGapDays / 7) + ' wks' : o.usualGapDays + ' days'}</td><td class="n">${o.daysOverdue}</td><td class="n">${money(o.avgCents)}</td></tr>`).join('')}
+        </tbody></table></div>` : ''}
+        <div class="rnext"><h3>What One More Time would do</h3><p>Each overdue customer gets a friendly check-in, then a personal discount, then a last call, stopping the moment they book. You approve the wording, and every Monday you see exactly who came back and what they spent.</p></div>
+        ${r.skippedRows ? `<p class="muted small">${r.skippedRows} rows couldn't be read and were left out.</p>` : ''}
+      </article>`;
+    $('auditReport').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ---------- admin
+  async function renderAdmin() {
+    const o = await api('GET', '/api/admin/overview');
+    const t = o.totals;
+    $('adminBody').innerHTML = `
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+        <div class="tile"><span>Waitlist sign-ups</span><b>${t.waitlist}</b></div>
+        <div class="tile"><span>Businesses</span><b>${t.businesses}</b></div>
+        <div class="tile"><span>Paying</span><b>${t.paying}</b></div>
+        <div class="tile good"><span>Monthly revenue</span><b>$${t.mrr.toLocaleString()}</b></div>
+      </div>
+      <h2 class="sub">Waitlist</h2>
+      <div class="card">${o.waitlist.length ? `<div class="tbl"><table><thead><tr><th>Business</th><th>Name</th><th>Email</th><th>Phone</th><th>Type</th><th>Message</th><th>Signed up</th></tr></thead><tbody>
+        ${o.waitlist.map((w) => `<tr><td>${esc(w.business_name)}</td><td>${esc(w.name)}</td><td>${esc(w.email)}</td><td>${esc(w.phone || '')}</td><td>${esc(w.business_type)}</td><td>${esc(w.message)}</td><td>${when(w.created_at)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">No sign-ups yet. They appear here when someone fills in the form on the website.</p>'}</div>
+      <h2 class="sub">Businesses</h2>
+      <div class="card">${o.businesses.length ? `<div class="tbl"><table><thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th class="n">Customers</th><th class="n">Messages (30d)</th><th class="n">Won back (30d)</th><th>Square</th><th>Joined</th></tr></thead><tbody>
+        ${o.businesses.map((b) => `<tr><td>${esc(b.name)}<br><span class="muted small">${esc(S.me.industries[b.industry] || b.industry)}${b.autopilot ? ' · autopilot' : ''}</span></td><td>${esc(b.owner_email)}</td><td>${esc(b.plan)} · ${esc(b.plan_status)}</td><td class="n">${b.customers}</td><td class="n">${b.messages_30d}</td><td class="n">${b.wins_30d} · ${money(b.recovered_30d)}</td><td>${esc(b.square || '—')}</td><td>${when(b.created_at)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">No businesses yet.</p>'}</div>`;
+  }
 
   boot();
 })();

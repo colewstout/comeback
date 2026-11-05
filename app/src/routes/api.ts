@@ -2,7 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { isValidTimeZone, localDate, addDays } from '../lib/dates.js';
 import { normalizeEmail, normalizePhone } from '../lib/contact.js';
-import { INDUSTRIES, renderMessage, STEP_NAMES, STEP_OFFSETS_DAYS, CODE_VALID_DAYS, baseDiscountCode } from '../lib/templates.js';
+import { INDUSTRIES, renderMessage, STEP_NAMES, STEP_OFFSETS_DAYS, CODE_VALID_DAYS, baseDiscountCode, PLACEHOLDERS, SEQUENCE_KINDS, templateProblems, type SequenceKind } from '../lib/templates.js';
+import { runAudit } from '../services/audit.js';
+import { isAdmin } from './growth.js';
 import { PLANS, planLimits } from '../lib/plans.js';
 import { getBusiness, publicBusiness, type Business } from '../services/businesses.js';
 import { loadCustomerStates } from '../services/customers.js';
@@ -23,11 +25,46 @@ const businessPatch = z.object({
   booking_url: z.string().trim().url().max(300).nullable().or(z.literal('').transform(() => null)),
   reply_to_email: z.string().trim().email().nullable().or(z.literal('').transform(() => null)),
   postal_address: z.string().trim().max(300).nullable(),
+  second_visit_enabled: z.boolean(),
+  second_visit_discount_pct: z.number().int().min(0).max(50),
+  message_templates: z.object({
+    winback: z.array(z.string().max(1000).nullable()).length(3),
+    second_visit: z.array(z.string().max(1000).nullable()).length(2),
+  }).partial(),
 }).partial().refine((p) => p.send_window_start === undefined || p.send_window_end === undefined || p.send_window_start < p.send_window_end, {
   message: 'Sending hours must start before they end.', path: ['send_window_end'],
 });
 
-const COLUMNS = ['name', 'industry', 'discount_pct', 'overdue_multiplier', 'timezone', 'send_window_start', 'send_window_end', 'autopilot', 'booking_url', 'reply_to_email', 'postal_address'] as const;
+const COLUMNS = ['name', 'industry', 'discount_pct', 'overdue_multiplier', 'timezone', 'send_window_start', 'send_window_end', 'autopilot', 'booking_url', 'reply_to_email', 'postal_address', 'second_visit_enabled', 'second_visit_discount_pct', 'message_templates'] as const;
+
+/** Which steps carry the discount code, so the owner's wording must include {code}. */
+const CODE_STEPS: Record<SequenceKind, number[]> = { winback: [1, 2], second_visit: [0, 1] };
+
+/** Starting wording owners can edit, written with placeholders. */
+export const TEMPLATE_DEFAULTS: Record<SequenceKind, string[]> = {
+  winback: [
+    "Hi {first_name}, it's {business}. It's been {since} since your last visit. Want us to save you a spot this week? {booking}",
+    "Hi {first_name}, we'd love to see you again! Here's {discount} off your next visit before {expires}. Use code {code}. {booking}",
+    "Last reminder, {first_name}: your {discount} off code {code} expires {expires}. After this we'll stop the reminders. Hope to see you soon! – {business}",
+  ],
+  second_visit: [
+    "Hi {first_name}, thanks again for choosing {business}! We'd love to see you again: here's {discount} off your next visit before {expires}. Use code {code}. {booking}",
+    "Quick reminder, {first_name}: your {discount} off code {code} for {business} expires {expires}. {booking}",
+  ],
+};
+
+function checkTemplates(t: Record<string, (string | null)[] | undefined>, pct: { winback: number; second_visit: number }): string | null {
+  for (const kind of ['winback', 'second_visit'] as SequenceKind[]) {
+    const steps = t[kind];
+    if (!steps) continue;
+    for (const [i, text] of steps.entries()) {
+      if (text == null || text === '') continue;
+      const p = templateProblems(text, { needsCode: pct[kind] > 0 && CODE_STEPS[kind].includes(i) });
+      if (p.length) return `${kind === 'winback' ? 'Win-back' : 'Second-visit'} message ${i + 1}: ${p[0]}`;
+    }
+  }
+  return null;
+}
 
 const customerPatch = z.object({
   name: z.string().trim().min(1).max(120),
@@ -48,6 +85,8 @@ export async function apiRoutes(app: FastifyInstance) {
     plans: PLANS,
     industries: Object.fromEntries(Object.entries(INDUSTRIES).map(([k, v]) => [k, v.label])),
     capabilities: { sms: smsAllowedFor(req.business!, providers), email: providers.email !== null, billing: Boolean(config.STRIPE_SECRET_KEY), square: app.square !== null },
+    isAdmin: isAdmin(config, req.user!.email),
+    templates: { defaults: TEMPLATE_DEFAULTS, placeholders: PLACEHOLDERS, steps: Object.fromEntries(Object.entries(SEQUENCE_KINDS).map(([k, v]) => [k, v.names.map((n, i) => ({ name: n, day: v.offsets[i] }))])) },
   }));
 
   app.patch('/business', async (req) => {
@@ -56,6 +95,11 @@ export async function apiRoutes(app: FastifyInstance) {
     const merged = { ...b, ...patch };
     if (merged.send_window_start >= merged.send_window_end) {
       throw Object.assign(new Error('Sending hours must start before they end.'), { statusCode: 400 });
+    }
+    if (patch.message_templates) {
+      const problem = checkTemplates(patch.message_templates, { winback: merged.discount_pct, second_visit: merged.second_visit_discount_pct });
+      if (problem) throw Object.assign(new Error(problem), { statusCode: 400 });
+      patch.message_templates = { ...(b.message_templates ?? {}), ...patch.message_templates } as typeof patch.message_templates;
     }
     const keys = COLUMNS.filter((k) => k in patch);
     if (keys.length) {
@@ -119,7 +163,7 @@ export async function apiRoutes(app: FastifyInstance) {
       ? STEP_OFFSETS_DAYS.map((offset, step) => ({
           step, name: STEP_NAMES[step], day: offset,
           ...renderMessage({
-            step, channel, businessName: b.name, industryKey: b.industry, customerName: c.name,
+            step, channel, templates: b.message_templates, businessName: b.name, industryKey: b.industry, customerName: c.name,
             daysSince: (c.rhythm?.daysSince ?? 0) + offset, learned: c.rhythm?.learned ?? false, discountPct: b.discount_pct,
             code: baseDiscountCode(c.name, b.discount_pct), expires: addDays(today, CODE_VALID_DAYS),
             bookingUrl: b.booking_url, postalAddress: b.postal_address, unsubscribeUrl: `${config.APP_URL}/u/…`,
@@ -179,6 +223,31 @@ export async function apiRoutes(app: FastifyInstance) {
       [id, req.business!.id, now()],
     );
     return { ok: true };
+  });
+
+  // Preview an owner's wording with a sample customer, before saving.
+  app.post('/templates/preview', async (req) => {
+    const body = z.object({ kind: z.enum(['winback', 'second_visit']), step: z.number().int().min(0).max(2), text: z.string().max(1000), channel: z.enum(['sms', 'email']).default('sms') }).parse(req.body);
+    const b = req.business!;
+    const pct = body.kind === 'second_visit' ? b.second_visit_discount_pct : b.discount_pct;
+    const plan = SEQUENCE_KINDS[body.kind];
+    if (body.step >= plan.offsets.length) throw Object.assign(new Error('That step doesn’t exist.'), { statusCode: 400 });
+    const problems = body.text.trim() ? templateProblems(body.text, { needsCode: pct > 0 && CODE_STEPS[body.kind].includes(body.step) }) : [];
+    const today = localDate(now(), b.timezone);
+    const msg = renderMessage({
+      kind: body.kind, step: body.step, channel: body.channel, templates: { [body.kind]: Object.assign([], { [body.step]: body.text }) },
+      businessName: b.name, industryKey: b.industry, customerName: 'Dana Reyes', daysSince: 49, learned: body.kind === 'winback',
+      discountPct: pct, code: baseDiscountCode('Dana', pct), expires: addDays(today, plan.codeValidDays),
+      bookingUrl: b.booking_url, postalAddress: b.postal_address, unsubscribeUrl: `${config.APP_URL}/u/…`,
+    });
+    return { ...msg, problems };
+  });
+
+  // Lost-customer audit for a prospect's sales export. Nothing is saved.
+  app.post('/audit', async (req) => {
+    const body = z.object({ csv: z.string().min(1), industry: z.enum(Object.keys(INDUSTRIES) as [string, ...string[]]).default('salon'), businessName: z.string().trim().max(120).default('') }).parse(req.body);
+    const result = runAudit({ csv: body.csv, industryKey: body.industry, today: localDate(now(), req.business!.timezone) });
+    return { businessName: body.businessName, industry: body.industry, industryLabel: INDUSTRIES[body.industry]!.label, preparedBy: req.user!.name || req.user!.email, generatedAt: now(), ...result };
   });
 
   app.get('/messages', async (req) => {

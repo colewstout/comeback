@@ -6,6 +6,9 @@ export interface Business {
   name: string;
   industry: string;
   discount_pct: number;
+  second_visit_enabled: boolean;
+  second_visit_discount_pct: number;
+  message_templates: import('../lib/templates.js').MessageTemplates;
   overdue_multiplier: number;
   timezone: string;
   send_window_start: number;
